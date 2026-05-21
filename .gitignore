@@ -6,3 +6,12 @@
 PROMPTS.md
 OPERATIONS.md
 /audits/
+
+# Go
+/costroid-sync
+/costroid-sync.exe
+/dist/
+*.db
+*.db-journal
+coverage.out
+*.test
