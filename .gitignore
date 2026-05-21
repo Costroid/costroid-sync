@@ -1,0 +1,8 @@
+.env
+.env.local
+.env.production
+*.pem
+*.key
+PROMPTS.md
+OPERATIONS.md
+/audits/
