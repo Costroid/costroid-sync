@@ -8,13 +8,14 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/costroid/costroid-sync/analysis"
 	"github.com/costroid/costroid-sync/providers"
 )
 
 // HeaderStyle is the lipgloss style used for table column headers.
 var HeaderStyle = lipgloss.NewStyle().Bold(true)
 
-// WriteTable renders records as an aligned terminal table with columns
+// WriteTable renders cost records as an aligned terminal table with columns
 // Provider | Model | Tokens | Cost. Renders ONLY metadata fields — never
 // prompts, completions, or any other raw provider content.
 func WriteTable(w io.Writer, records []providers.NormalizedCostRecord) {
@@ -28,7 +29,41 @@ func WriteTable(w io.Writer, records []providers.NormalizedCostRecord) {
 			fmt.Sprintf("$%.4f", r.CostUSD),
 		}
 	}
+	renderTable(w, cols, rows)
+}
 
+// savingsFooterNote is printed after the table to remind the user that
+// recommendations are cost estimates only.
+const savingsFooterNote = "Estimates use token counts × seeded pricing. Costs only — they don't " +
+	"account for quality, latency, context window, or capability differences."
+
+// WriteSavingsTable renders savings recommendations with columns
+// Provider | Current | Cheaper Alt | Tokens | Now | Est. | Save | Save%.
+// Renders only metadata + cost fields — never raw provider content.
+// Always prints a one-line footer clarifying that the numbers are estimates.
+func WriteSavingsTable(w io.Writer, recs []analysis.SavingsRecommendation) {
+	cols := []string{"Provider", "Current", "Cheaper Alt", "Tokens", "Now", "Est.", "Save", "Save%"}
+	rows := make([][]string, len(recs))
+	for i, r := range recs {
+		rows[i] = []string{
+			r.Provider,
+			r.CurrentModel,
+			r.RecommendedModel,
+			strconv.Itoa(r.PromptTokens + r.CompletionTokens),
+			fmt.Sprintf("$%.4f", r.CurrentCostUSD),
+			fmt.Sprintf("$%.4f", r.EstimatedCostUSD),
+			fmt.Sprintf("$%.4f", r.SavingsUSD),
+			fmt.Sprintf("%.1f%%", r.SavingsPercent),
+		}
+	}
+	renderTable(w, cols, rows)
+	fmt.Fprintln(w, savingsFooterNote)
+}
+
+// renderTable writes a header + rows with two-space column padding.
+// All cell values are rendered as plain strings — callers are responsible
+// for ensuring no raw provider content reaches this layer.
+func renderTable(w io.Writer, cols []string, rows [][]string) {
 	widths := make([]int, len(cols))
 	for i, c := range cols {
 		widths[i] = len(c)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/costroid/costroid-sync/analysis"
 	"github.com/costroid/costroid-sync/output"
 	"github.com/costroid/costroid-sync/providers"
 	"github.com/costroid/costroid-sync/storage"
@@ -68,7 +69,31 @@ func runSync(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	output.WriteTable(cmd.OutOrStdout(), records)
+	if tip := bestSavingsTip(records); tip != "" {
+		fmt.Fprintln(cmd.OutOrStdout(), tip)
+	}
 	return nil
+}
+
+// bestSavingsTip returns a short one-liner for the largest cheaper-model
+// opportunity in records, or "" if none qualifies. Wrapped in recover so
+// a bug in savings analysis can never break a successful sync.
+func bestSavingsTip(records []providers.NormalizedCostRecord) (out string) {
+	defer func() {
+		if r := recover(); r != nil {
+			out = ""
+		}
+	}()
+	recs := analysis.Recommend(records)
+	if len(recs) == 0 {
+		return ""
+	}
+	top := recs[0]
+	return fmt.Sprintf(
+		"⚡ Spent $%.2f on %s. Estimated cost on %s: $%.2f (~%.0f%% lower).",
+		top.CurrentCostUSD, top.CurrentModel,
+		top.RecommendedModel, top.EstimatedCostUSD, top.SavingsPercent,
+	)
 }
 
 func selectedRegistrations(name string) ([]providers.Registration, error) {
