@@ -60,6 +60,65 @@ func WriteSavingsTable(w io.Writer, recs []analysis.SavingsRecommendation) {
 	fmt.Fprintln(w, savingsFooterNote)
 }
 
+// WriteHistoryTable renders local cost records as
+// Date | Provider | Model | Tokens | Cost.
+func WriteHistoryTable(w io.Writer, records []providers.NormalizedCostRecord) {
+	cols := []string{"Date", "Provider", "Model", "Tokens", "Cost"}
+	rows := make([][]string, len(records))
+	for i, r := range records {
+		rows[i] = []string{
+			formatRecordDate(r.RecordedAt),
+			r.Provider,
+			r.Model,
+			strconv.Itoa(r.TotalTokens),
+			formatUSD(r.CostUSD),
+		}
+	}
+	renderTable(w, cols, rows)
+}
+
+// WriteTrendTable renders local period aggregates.
+func WriteTrendTable(w io.Writer, periods []analysis.TrendPeriod) {
+	cols := []string{"Period", "Cost", "Tokens", "Change"}
+	rows := make([][]string, len(periods))
+	for i, p := range periods {
+		rows[i] = []string{
+			p.Period,
+			formatUSD(p.CostUSD),
+			strconv.Itoa(p.TotalTokens),
+			formatChange(p),
+		}
+	}
+	renderTable(w, cols, rows)
+}
+
+// WriteForecast renders a stable month-end forecast summary.
+func WriteForecast(w io.Writer, f analysis.ForecastResult) {
+	rows := [][]string{
+		{"Current month spend", formatUSD(f.CurrentMonthSpendUSD)},
+		{"Forecast month-end", formatUSD(f.ForecastMonthEndUSD)},
+		{"Method", f.Method},
+		{"Days observed", strconv.Itoa(f.DaysObserved)},
+		{"Days remaining", strconv.Itoa(f.DaysRemaining)},
+	}
+	renderTable(w, []string{"Metric", "Value"}, rows)
+}
+
+// WriteAnomalyTable renders days whose spend exceeded the rolling baseline.
+func WriteAnomalyTable(w io.Writer, anomalies []analysis.Anomaly) {
+	cols := []string{"Date", "Actual", "7d Avg", "Deviation"}
+	rows := make([][]string, len(anomalies))
+	for i, a := range anomalies {
+		rows[i] = []string{
+			a.Date,
+			formatUSD(a.ActualCostUSD),
+			formatUSD(a.RollingAverageUSD),
+			fmt.Sprintf("%.1f%%", a.DeviationPercent),
+		}
+	}
+	renderTable(w, cols, rows)
+}
+
 // renderTable writes a header + rows with two-space column padding.
 // All cell values are rendered as plain strings — callers are responsible
 // for ensuring no raw provider content reaches this layer.
@@ -96,4 +155,22 @@ func padRight(s string, n int) string {
 		return s
 	}
 	return s + strings.Repeat(" ", n-len(s))
+}
+
+func formatUSD(v float64) string {
+	return fmt.Sprintf("$%.4f", v)
+}
+
+func formatChange(p analysis.TrendPeriod) string {
+	if !p.HasChange {
+		return "n/a"
+	}
+	return fmt.Sprintf("%+.1f%%", p.ChangePercent)
+}
+
+func formatRecordDate(recordedAt string) string {
+	if len(recordedAt) >= len("2006-01-02") {
+		return recordedAt[:len("2006-01-02")]
+	}
+	return recordedAt
 }
