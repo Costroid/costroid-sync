@@ -2,27 +2,50 @@ version: 2
 project_name: costroid-sync
 
 builds:
-  - id: costroid-sync
-    main: ./
+  - id: linux-amd64
+    main: .
     binary: costroid-sync
-    env:
-      - CGO_ENABLED=1
     goos:
       - linux
-      - darwin
-      - windows
     goarch:
       - amd64
-      - arm64
+    env:
+      - CGO_ENABLED=1
+      - CC=gcc
+    flags:
+      - -trimpath
     ldflags:
-      - -s -w -X github.com/costroid/costroid-sync/cmd.Version={{.Version}}
+      - -s -w -X github.com/costroid/costroid-sync/cmd.Version={{ .Version }}
+
+  - id: linux-arm64
+    main: .
+    binary: costroid-sync
+    goos:
+      - linux
+    goarch:
+      - arm64
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/costroid/costroid-sync/cmd.Version={{ .Version }}
 
 archives:
-  - formats: [tar.gz]
-    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        formats: [zip]
+  - id: linux-amd64
+    ids:
+      - linux-amd64
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_linux_amd64"
+
+  - id: linux-arm64
+    ids:
+      - linux-arm64
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_linux_arm64"
 
 checksum:
-  name_template: "checksums.txt"
+  name_template: checksums.txt
