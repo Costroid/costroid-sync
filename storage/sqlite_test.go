@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -116,7 +117,13 @@ func TestGetRecords_FilterSince(t *testing.T) {
 
 func TestSchema_NoForbiddenColumns(t *testing.T) {
 	db := newTestDB(t)
-	rows, err := db.Query("PRAGMA table_info(cost_records)")
+	assertNoForbiddenColumns(t, db, "cost_records")
+	assertNoForbiddenColumns(t, db, "local_budgets")
+}
+
+func assertNoForbiddenColumns(t *testing.T, db *sql.DB, table string) {
+	t.Helper()
+	rows, err := db.Query("PRAGMA table_info(" + table + ")")
 	if err != nil {
 		t.Fatalf("pragma: %v", err)
 	}
@@ -147,7 +154,44 @@ func TestSchema_NoForbiddenColumns(t *testing.T) {
 		}
 	}
 	if len(found) == 0 {
-		t.Fatal("PRAGMA returned no columns")
+		t.Fatalf("PRAGMA returned no columns for %s", table)
+	}
+}
+
+func TestSaveBudget_GetBudget(t *testing.T) {
+	db := newTestDB(t)
+	ctx := context.Background()
+
+	first := BudgetRecord{AmountUSD: 500, Period: "monthly", UpdatedAt: "2026-05-22T00:00:00Z"}
+	if err := SaveBudget(ctx, db, first); err != nil {
+		t.Fatalf("SaveBudget first: %v", err)
+	}
+	got, err := GetBudget(ctx, db)
+	if err != nil {
+		t.Fatalf("GetBudget first: %v", err)
+	}
+	if got != first {
+		t.Fatalf("first budget = %+v, want %+v", got, first)
+	}
+
+	second := BudgetRecord{AmountUSD: 100, Period: "weekly", UpdatedAt: "2026-05-23T00:00:00Z"}
+	if err := SaveBudget(ctx, db, second); err != nil {
+		t.Fatalf("SaveBudget second: %v", err)
+	}
+	got, err = GetBudget(ctx, db)
+	if err != nil {
+		t.Fatalf("GetBudget second: %v", err)
+	}
+	if got != second {
+		t.Fatalf("second budget = %+v, want %+v", got, second)
+	}
+}
+
+func TestGetBudget_Missing(t *testing.T) {
+	db := newTestDB(t)
+	_, err := GetBudget(context.Background(), db)
+	if !errors.Is(err, ErrBudgetNotFound) {
+		t.Fatalf("want ErrBudgetNotFound, got %v", err)
 	}
 }
 

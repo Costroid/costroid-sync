@@ -7,9 +7,11 @@ import (
 	"github.com/costroid/costroid-sync/providers"
 )
 
-// WriteJSON serialises records as a JSON array. Real formatting and
-// stable field ordering land in C6.
+// WriteJSON serialises records as a metadata-only JSON array.
 func WriteJSON(w io.Writer, records []providers.NormalizedCostRecord) error {
+	if records == nil {
+		records = []providers.NormalizedCostRecord{}
+	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(records)

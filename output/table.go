@@ -119,6 +119,19 @@ func WriteAnomalyTable(w io.Writer, anomalies []analysis.Anomaly) {
 	renderTable(w, cols, rows)
 }
 
+// WriteBudgetStatus renders local budget status as metadata-only spend data.
+func WriteBudgetStatus(w io.Writer, status analysis.BudgetStatus) {
+	rows := [][]string{{
+		status.Period,
+		formatUSD(status.BudgetAmountUSD),
+		formatUSD(status.SpendUSD),
+		formatUSD(status.RemainingUSD),
+		fmt.Sprintf("%.1f%%", status.UsedPercent),
+		formatBudgetState(status),
+	}}
+	renderTable(w, []string{"Period", "Budget", "Spend", "Remaining", "Used", "Status"}, rows)
+}
+
 // renderTable writes a header + rows with two-space column padding.
 // All cell values are rendered as plain strings — callers are responsible
 // for ensuring no raw provider content reaches this layer.
@@ -173,4 +186,11 @@ func formatRecordDate(recordedAt string) string {
 		return recordedAt[:len("2006-01-02")]
 	}
 	return recordedAt
+}
+
+func formatBudgetState(status analysis.BudgetStatus) string {
+	if status.IsOverBudget {
+		return "over budget"
+	}
+	return "on track"
 }

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,6 +19,14 @@ const (
 	DefaultDBFilename = "costroid.db"
 	envDBPath         = "COSTROID_DB"
 )
+
+var ErrBudgetNotFound = errors.New("budget not found")
+
+type BudgetRecord struct {
+	AmountUSD float64
+	Period    string
+	UpdatedAt string
+}
 
 // Open returns a handle to the SQLite database at path.
 // Low-level primitive — InitDB is what callers normally want.
@@ -73,6 +82,13 @@ CREATE TABLE IF NOT EXISTS cost_records (
     recorded_at       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cost_records_recorded_at ON cost_records(recorded_at);
+
+CREATE TABLE IF NOT EXISTS local_budgets (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    amount_usd REAL NOT NULL,
+    period TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 `
 
 const upsertSQL = `
@@ -167,4 +183,42 @@ func GetRecords(ctx context.Context, db *sql.DB, since time.Time) ([]providers.N
 		return nil, fmt.Errorf("rows: %w", err)
 	}
 	return out, nil
+}
+
+const upsertBudgetSQL = `
+INSERT INTO local_budgets (id, amount_usd, period, updated_at)
+VALUES (1, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    amount_usd = excluded.amount_usd,
+    period = excluded.period,
+    updated_at = excluded.updated_at
+`
+
+func SaveBudget(ctx context.Context, db *sql.DB, budget BudgetRecord) error {
+	if _, err := db.ExecContext(ctx, upsertBudgetSQL,
+		budget.AmountUSD, budget.Period, budget.UpdatedAt,
+	); err != nil {
+		return fmt.Errorf("save budget: %w", err)
+	}
+	return nil
+}
+
+const selectBudgetSQL = `
+SELECT amount_usd, period, updated_at
+  FROM local_budgets
+ WHERE id = 1
+`
+
+func GetBudget(ctx context.Context, db *sql.DB) (BudgetRecord, error) {
+	var budget BudgetRecord
+	err := db.QueryRowContext(ctx, selectBudgetSQL).Scan(
+		&budget.AmountUSD, &budget.Period, &budget.UpdatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return BudgetRecord{}, ErrBudgetNotFound
+	}
+	if err != nil {
+		return BudgetRecord{}, fmt.Errorf("get budget: %w", err)
+	}
+	return budget, nil
 }
