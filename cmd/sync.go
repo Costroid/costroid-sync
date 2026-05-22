@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -26,31 +27,23 @@ var syncCmd = &cobra.Command{
 }
 
 func init() {
-	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (currently: openai)")
+	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (openai, anthropic, all)")
 	syncCmd.Flags().IntVar(&syncDays, "days", 30, "lookback window in days")
 	rootCmd.AddCommand(syncCmd)
 }
 
 func runSync(cmd *cobra.Command, args []string) error {
-	if syncProvider != "openai" {
-		return fmt.Errorf("provider %q not supported in C2 (only \"openai\")", syncProvider)
-	}
-	adminKey := os.Getenv("OPENAI_ADMIN_KEY")
-	if adminKey == "" {
-		return errors.New(
-			"OPENAI_ADMIN_KEY is not set.\n" +
-				"Create an admin key at https://platform.openai.com/settings/organization/admin-keys, then:\n" +
-				"  export OPENAI_ADMIN_KEY=sk-admin-...",
-		)
+	regs, err := selectedRegistrations(syncProvider)
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(cmd.Context(), 60*time.Second)
 	defer cancel()
 
-	p := providers.NewOpenAIProvider(adminKey)
-	records, err := p.Fetch(ctx, syncDays)
+	records, notes, err := fetchSelectedProviders(ctx, regs, syncDays, syncProvider == "all")
 	if err != nil {
-		return fmt.Errorf("openai fetch: %w", err)
+		return err
 	}
 
 	dbPath, err := storage.ResolveDBPath()
@@ -67,10 +60,61 @@ func runSync(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("save records: %w", err)
 	}
 
+	for _, note := range notes {
+		fmt.Fprintln(cmd.OutOrStdout(), note)
+	}
 	if len(records) == 0 {
 		fmt.Fprintf(cmd.OutOrStdout(), "No usage records for the last %d days.\n", syncDays)
 		return nil
 	}
 	output.WriteTable(cmd.OutOrStdout(), records)
 	return nil
+}
+
+func selectedRegistrations(name string) ([]providers.Registration, error) {
+	if name == "all" {
+		return providers.All(), nil
+	}
+	reg, ok := providers.Get(name)
+	if !ok {
+		return nil, fmt.Errorf("provider %q not supported (available: %s)", name, availableProviders())
+	}
+	return []providers.Registration{reg}, nil
+}
+
+func fetchSelectedProviders(ctx context.Context, regs []providers.Registration, days int, skipMissing bool) ([]providers.NormalizedCostRecord, []string, error) {
+	var (
+		records    []providers.NormalizedCostRecord
+		notes      []string
+		configured int
+	)
+	for _, reg := range regs {
+		adminKey := os.Getenv(reg.EnvVar)
+		if adminKey == "" {
+			if skipMissing {
+				notes = append(notes, fmt.Sprintf("Skipping %s: %s is not set.", reg.Name, reg.EnvVar))
+				continue
+			}
+			return nil, nil, errors.New(reg.MissingEnvHelp)
+		}
+		configured++
+		fetched, err := reg.New(adminKey).Fetch(ctx, days)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s fetch: %w", reg.Name, err)
+		}
+		records = append(records, fetched...)
+	}
+	if skipMissing && configured == 0 {
+		return nil, nil, errors.New("no provider admin keys are set; set OPENAI_ADMIN_KEY or ANTHROPIC_ADMIN_KEY")
+	}
+	return records, notes, nil
+}
+
+func availableProviders() string {
+	var names []string
+	for _, reg := range providers.All() {
+		names = append(names, reg.Name)
+	}
+	names = append(names, "all")
+	return strings.Join(names, ", ")
 }

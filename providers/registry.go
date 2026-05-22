@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 	"errors"
+	"sort"
 )
 
 // ErrNotImplemented is returned by provider stubs that have not been
@@ -17,25 +18,51 @@ type Provider interface {
 	Fetch(ctx context.Context, days int) ([]NormalizedCostRecord, error)
 }
 
-// registry holds available providers keyed by Name().
-// Population happens in C2 once OpenAI is the first real provider.
-var registry = map[string]Provider{}
-
-// Register adds a provider to the registry. Safe to call from init().
-func Register(p Provider) {
-	registry[p.Name()] = p
+// Registration describes how the CLI can construct a provider from its
+// environment variable.
+type Registration struct {
+	Name           string
+	EnvVar         string
+	MissingEnvHelp string
+	New            func(adminKey string) Provider
 }
 
-// Get returns the provider registered under name, or nil if absent.
-func Get(name string) Provider {
-	return registry[name]
+var (
+	registry      = map[string]Registration{}
+	providerOrder = []string{"openai", "anthropic"}
+)
+
+// Register adds a provider registration. Safe to call from init().
+func Register(reg Registration) {
+	registry[reg.Name] = reg
 }
 
-// All returns every registered provider.
-func All() []Provider {
-	out := make([]Provider, 0, len(registry))
-	for _, p := range registry {
-		out = append(out, p)
+// Get returns the provider registration under name.
+func Get(name string) (Registration, bool) {
+	reg, ok := registry[name]
+	return reg, ok
+}
+
+// All returns every registered provider in stable CLI order.
+func All() []Registration {
+	out := make([]Registration, 0, len(registry))
+	seen := map[string]bool{}
+	for _, name := range providerOrder {
+		if reg, ok := registry[name]; ok {
+			out = append(out, reg)
+			seen[name] = true
+		}
+	}
+
+	var rest []string
+	for name := range registry {
+		if !seen[name] {
+			rest = append(rest, name)
+		}
+	}
+	sort.Strings(rest)
+	for _, name := range rest {
+		out = append(out, registry[name])
 	}
 	return out
 }
