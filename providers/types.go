@@ -1,5 +1,11 @@
 package providers
 
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+)
+
 // NormalizedCostRecord is the ONLY shape providers may emit.
 //
 // METADATA-ONLY RULE (see AGENTS.md "The One Unbreakable Rule"):
@@ -11,11 +17,24 @@ package providers
 //     into a catch-all map and forward it.
 //   - A violation of this rule is a critical security bug.
 type NormalizedCostRecord struct {
-	Provider         string  // "openai", "anthropic", ...
-	Model            string  // "gpt-4o", "claude-sonnet-4-6", ...
-	PromptTokens     int     // input token count only — never the prompt itself
-	CompletionTokens int     // output token count only — never the completion itself
-	TotalTokens      int     // prompt + completion
-	CostUSD          float64 // computed cost in USD
-	RecordedAt       string  // RFC3339 timestamp from the provider
+	Provider         string  `json:"provider"`
+	Model            string  `json:"model"`
+	PromptTokens     int     `json:"prompt_tokens"`
+	CompletionTokens int     `json:"completion_tokens"`
+	TotalTokens      int     `json:"total_tokens"`
+	CostUSD          float64 `json:"cost_usd"`
+	RecordedAt       string  `json:"recorded_at"`
+	APIKeyID         string  `json:"api_key_id"`
+	ProjectID        string  `json:"project_id"`
+	SourceHash       string  `json:"source_hash"`
+}
+
+// ComputeSourceHash returns the deterministic identity hash for a record.
+// Inputs are identity-only; volatile fields (token counts, cost) are
+// intentionally excluded so revisions to the same bucket UPSERT in place
+// instead of inserting new rows.
+func ComputeSourceHash(provider, recordedAt, model, projectID, apiKeyID string) string {
+	h := sha256.New()
+	fmt.Fprintf(h, "%s|%s|%s|%s|%s", provider, recordedAt, model, projectID, apiKeyID)
+	return hex.EncodeToString(h.Sum(nil))
 }
