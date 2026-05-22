@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -376,5 +377,63 @@ func TestFetch_Pagination(t *testing.T) {
 	}
 	if len(records) != 2 {
 		t.Errorf("want 2 records from 2 pages, got %d", len(records))
+	}
+}
+
+func TestFetch_RequestParameters(t *testing.T) {
+	var (
+		usageQuery url.Values
+		costQuery  url.Values
+	)
+	p := newTestProvider(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, openaiUsagePath):
+			usageQuery = r.URL.Query()
+		case strings.HasPrefix(r.URL.Path, openaiCostsPath):
+			costQuery = r.URL.Query()
+		}
+		_, _ = w.Write([]byte(`{"data":[],"has_more":false}`))
+	})
+	if _, err := p.Fetch(context.Background(), 7); err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+
+	for name, q := range map[string]url.Values{"usage": usageQuery, "costs": costQuery} {
+		if q.Get("start_time") == "" {
+			t.Errorf("%s: start_time missing", name)
+		}
+		if got := q.Get("bucket_width"); got != "1d" {
+			t.Errorf("%s: bucket_width = %q, want 1d", name, got)
+		}
+		if q.Get("limit") == "" {
+			t.Errorf("%s: limit missing", name)
+		}
+	}
+
+	wantGroupBy := map[string]bool{"model": true, "project_id": true, "api_key_id": true}
+	got := map[string]bool{}
+	for _, g := range usageQuery["group_by"] {
+		got[g] = true
+	}
+	for k := range wantGroupBy {
+		if !got[k] {
+			t.Errorf("usage: missing group_by=%s; got=%v", k, usageQuery["group_by"])
+		}
+	}
+}
+
+func TestFetch_LimitClampedTo31(t *testing.T) {
+	var captured url.Values
+	p := newTestProvider(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, openaiUsagePath) && captured == nil {
+			captured = r.URL.Query()
+		}
+		_, _ = w.Write([]byte(`{"data":[],"has_more":false}`))
+	})
+	if _, err := p.Fetch(context.Background(), 90); err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if got := captured.Get("limit"); got != "31" {
+		t.Errorf("limit with days=90: got %q, want 31", got)
 	}
 }

@@ -46,11 +46,20 @@ func (p *OpenAIProvider) Fetch(ctx context.Context, days int) ([]NormalizedCostR
 	end := now.Unix()
 	start := now.Add(-time.Duration(days) * 24 * time.Hour).Unix()
 
-	usage, err := p.fetchUsagePages(ctx, start, end)
+	// OpenAI caps page size at 31 buckets when bucket_width=1d.
+	limit := days
+	if limit > 31 {
+		limit = 31
+	}
+	if limit < 1 {
+		limit = 1
+	}
+
+	usage, err := p.fetchUsagePages(ctx, start, end, limit)
 	if err != nil {
 		return nil, err
 	}
-	costs, err := p.fetchCostPages(ctx, start, end)
+	costs, err := p.fetchCostPages(ctx, start, end, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +162,7 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, path string, query url.V
 	return nil
 }
 
-func (p *OpenAIProvider) fetchUsagePages(ctx context.Context, startTime, endTime int64) ([]openaiUsageBucket, error) {
+func (p *OpenAIProvider) fetchUsagePages(ctx context.Context, startTime, endTime int64, limit int) ([]openaiUsageBucket, error) {
 	var all []openaiUsageBucket
 	nextPage := ""
 	for {
@@ -161,7 +170,7 @@ func (p *OpenAIProvider) fetchUsagePages(ctx context.Context, startTime, endTime
 		q.Set("start_time", strconv.FormatInt(startTime, 10))
 		q.Set("end_time", strconv.FormatInt(endTime, 10))
 		q.Set("bucket_width", "1d")
-		q.Set("limit", "180")
+		q.Set("limit", strconv.Itoa(limit))
 		q.Add("group_by", "project_id")
 		q.Add("group_by", "api_key_id")
 		q.Add("group_by", "model")
@@ -182,7 +191,7 @@ func (p *OpenAIProvider) fetchUsagePages(ctx context.Context, startTime, endTime
 	return all, nil
 }
 
-func (p *OpenAIProvider) fetchCostPages(ctx context.Context, startTime, endTime int64) ([]openaiCostBucket, error) {
+func (p *OpenAIProvider) fetchCostPages(ctx context.Context, startTime, endTime int64, limit int) ([]openaiCostBucket, error) {
 	var all []openaiCostBucket
 	nextPage := ""
 	for {
@@ -190,7 +199,7 @@ func (p *OpenAIProvider) fetchCostPages(ctx context.Context, startTime, endTime 
 		q.Set("start_time", strconv.FormatInt(startTime, 10))
 		q.Set("end_time", strconv.FormatInt(endTime, 10))
 		q.Set("bucket_width", "1d")
-		q.Set("limit", "180")
+		q.Set("limit", strconv.Itoa(limit))
 		q.Add("group_by", "project_id")
 		q.Add("group_by", "line_item")
 		if nextPage != "" {
