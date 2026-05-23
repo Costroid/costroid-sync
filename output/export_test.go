@@ -19,11 +19,14 @@ func TestWriteCSV_MetadataHeadersAndValues(t *testing.T) {
 	wantHeader := []string{
 		"recorded_at", "provider", "model", "project_id", "api_key_id",
 		"prompt_tokens", "completion_tokens", "total_tokens", "cost_usd", "source_hash",
+		"product", "sku", "unit_type",
+		"usage_quantity", "unit_price_usd", "gross_amount_usd", "discount_amount_usd",
 	}
 	assertCSVRow(t, rows[0], wantHeader)
 	assertCSVRow(t, rows[1], []string{
 		"2026-05-22T00:00:00Z", "openai", "gpt-4o", "project-1", "key-1",
 		"10", "5", "15", "0.1234", "hash-1",
+		"", "", "", "0", "0", "0", "0",
 	})
 }
 
@@ -111,6 +114,101 @@ func exportTestRecord() providers.NormalizedCostRecord {
 	}
 }
 
+func exportTestCopilotRecord() providers.NormalizedCostRecord {
+	return providers.NormalizedCostRecord{
+		Provider:          "github-copilot",
+		Model:             "gpt-4-copilot",
+		ProjectID:         "my-org",
+		APIKeyID:          "",
+		PromptTokens:      0,
+		CompletionTokens:  0,
+		TotalTokens:       0,
+		CostUSD:           2.50,
+		RecordedAt:        "2026-05-22T00:00:00Z",
+		SourceHash:        "hash-copilot",
+		Product:           "copilot",
+		SKU:               "copilot_premium_request_user",
+		UnitType:          "premium_requests",
+		UsageQuantity:     250,
+		UnitPriceUSD:      0.01,
+		GrossAmountUSD:    2.50,
+		DiscountAmountUSD: 0,
+	}
+}
+
+func TestWriteCSV_IncludesBillingMetadata(t *testing.T) {
+	var buf bytes.Buffer
+	if err := WriteCSV(&buf, []providers.NormalizedCostRecord{exportTestCopilotRecord()}); err != nil {
+		t.Fatalf("WriteCSV: %v", err)
+	}
+	rows := readCSV(t, buf.String())
+	if len(rows) != 2 {
+		t.Fatalf("want header + 1 data row, got %d rows", len(rows))
+	}
+	row := rows[1]
+	want := map[int]string{
+		1:  "github-copilot",
+		2:  "gpt-4-copilot",
+		8:  "2.5",                          // cost_usd
+		10: "copilot",                      // product
+		11: "copilot_premium_request_user", // sku
+		12: "premium_requests",             // unit_type
+		13: "250",                          // usage_quantity
+	}
+	for idx, expected := range want {
+		if row[idx] != expected {
+			t.Errorf("row[%d] = %q, want %q (row=%+v)", idx, row[idx], expected, row)
+		}
+	}
+}
+
+func TestWriteFOCUSCSV_QuantityFallback(t *testing.T) {
+	var buf bytes.Buffer
+	if err := WriteFOCUSCSV(&buf, []providers.NormalizedCostRecord{exportTestCopilotRecord()}); err != nil {
+		t.Fatalf("WriteFOCUSCSV: %v", err)
+	}
+	rows := readCSV(t, buf.String())
+	// ConsumedQuantity (index 8) should be UsageQuantity; ConsumedUnit (index 9) UnitType.
+	if got := rows[1][8]; got != "250" {
+		t.Errorf("ConsumedQuantity = %q, want 250", got)
+	}
+	if got := rows[1][9]; got != "premium_requests" {
+		t.Errorf("ConsumedUnit = %q, want premium_requests", got)
+	}
+	// Token-bearing row still uses tokens.
+	buf.Reset()
+	if err := WriteFOCUSCSV(&buf, []providers.NormalizedCostRecord{exportTestRecord()}); err != nil {
+		t.Fatalf("WriteFOCUSCSV (tokens): %v", err)
+	}
+	rows = readCSV(t, buf.String())
+	if got := rows[1][8]; got != "15" {
+		t.Errorf("token row ConsumedQuantity = %q, want 15", got)
+	}
+	if got := rows[1][9]; got != "tokens" {
+		t.Errorf("token row ConsumedUnit = %q, want tokens", got)
+	}
+}
+
+func TestWriteJSON_BillingKeysPresent(t *testing.T) {
+	var buf bytes.Buffer
+	if err := WriteJSON(&buf, []providers.NormalizedCostRecord{exportTestCopilotRecord()}); err != nil {
+		t.Fatalf("WriteJSON: %v", err)
+	}
+	var rows []map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &rows); err != nil {
+		t.Fatalf("json should be valid: %v", err)
+	}
+	for _, want := range []string{
+		"product", "sku", "unit_type",
+		"usage_quantity", "unit_price_usd", "gross_amount_usd", "discount_amount_usd",
+	} {
+		if _, ok := rows[0][want]; !ok {
+			t.Errorf("billing key %q missing from JSON output: %v", want, rows[0])
+		}
+	}
+	assertForbiddenJSONNamesAbsent(t, buf.String())
+}
+
 func readCSV(t *testing.T, value string) [][]string {
 	t.Helper()
 	rows, err := csv.NewReader(strings.NewReader(value)).ReadAll()
@@ -138,6 +236,9 @@ func allowedJSONKeys() map[string]bool {
 		"completion_tokens": true, "total_tokens": true, "cost_usd": true,
 		"recorded_at": true, "api_key_id": true, "project_id": true,
 		"source_hash": true,
+		"product":     true, "sku": true, "unit_type": true,
+		"usage_quantity": true, "unit_price_usd": true,
+		"gross_amount_usd": true, "discount_amount_usd": true,
 	}
 }
 

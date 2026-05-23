@@ -28,7 +28,7 @@ var syncCmd = &cobra.Command{
 }
 
 func init() {
-	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (openai, anthropic, all)")
+	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (openai, anthropic, github-copilot (alias: copilot), all)")
 	syncCmd.Flags().IntVar(&syncDays, "days", 30, "lookback window in days")
 	rootCmd.AddCommand(syncCmd)
 }
@@ -115,9 +115,10 @@ func fetchSelectedProviders(ctx context.Context, regs []providers.Registration, 
 	)
 	for _, reg := range regs {
 		adminKey := os.Getenv(reg.EnvVar)
-		if adminKey == "" {
+		missing := missingEnvVars(reg, adminKey)
+		if len(missing) > 0 {
 			if skipMissing {
-				notes = append(notes, fmt.Sprintf("Skipping %s: %s is not set.", reg.Name, reg.EnvVar))
+				notes = append(notes, fmt.Sprintf("Skipping %s: %s not set.", reg.Name, strings.Join(missing, ", ")))
 				continue
 			}
 			return nil, nil, errors.New(reg.MissingEnvHelp)
@@ -130,9 +131,22 @@ func fetchSelectedProviders(ctx context.Context, regs []providers.Registration, 
 		records = append(records, fetched...)
 	}
 	if skipMissing && configured == 0 {
-		return nil, nil, errors.New("no provider admin keys are set; set OPENAI_ADMIN_KEY or ANTHROPIC_ADMIN_KEY")
+		return nil, nil, errors.New("no provider admin keys are set; export OPENAI_ADMIN_KEY, ANTHROPIC_ADMIN_KEY, or GITHUB_PAT + GITHUB_ORG")
 	}
 	return records, notes, nil
+}
+
+func missingEnvVars(reg providers.Registration, adminKey string) []string {
+	var missing []string
+	if adminKey == "" {
+		missing = append(missing, reg.EnvVar)
+	}
+	for _, v := range reg.ExtraEnvVars {
+		if os.Getenv(v) == "" {
+			missing = append(missing, v)
+		}
+	}
+	return missing
 }
 
 func availableProviders() string {

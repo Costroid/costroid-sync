@@ -27,6 +27,22 @@ type NormalizedCostRecord struct {
 	APIKeyID         string  `json:"api_key_id"`
 	ProjectID        string  `json:"project_id"`
 	SourceHash       string  `json:"source_hash"`
+
+	// Billing metadata for providers whose APIs report quantity/price
+	// breakdowns rather than tokens (e.g. github-copilot premium-request
+	// billing). METADATA ONLY. The seven fields below carry identifiers,
+	// counts, and money amounts — nothing else. Adding any field here that
+	// could hold prompt, completion, message, content, raw payload, source
+	// code, repository contents, issue/PR text, or any other user-generated
+	// text is a critical security bug. Tests assert the JSON keyset is
+	// exactly these 17 entries.
+	Product           string  `json:"product"`
+	SKU               string  `json:"sku"`
+	UnitType          string  `json:"unit_type"`
+	UsageQuantity     float64 `json:"usage_quantity"`
+	UnitPriceUSD      float64 `json:"unit_price_usd"`
+	GrossAmountUSD    float64 `json:"gross_amount_usd"`
+	DiscountAmountUSD float64 `json:"discount_amount_usd"`
 }
 
 // ComputeSourceHash returns the deterministic identity hash for a record.

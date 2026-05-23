@@ -288,6 +288,9 @@ func TestFetch_StripsProhibitedFields(t *testing.T) {
 		"prompt_tokens": true, "completion_tokens": true, "total_tokens": true,
 		"cost_usd": true, "recorded_at": true,
 		"api_key_id": true, "project_id": true, "source_hash": true,
+		"product": true, "sku": true, "unit_type": true,
+		"usage_quantity": true, "unit_price_usd": true,
+		"gross_amount_usd": true, "discount_amount_usd": true,
 	}
 	for k := range back {
 		if !expected[k] {

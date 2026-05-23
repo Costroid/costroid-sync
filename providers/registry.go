@@ -19,17 +19,19 @@ type Provider interface {
 }
 
 // Registration describes how the CLI can construct a provider from its
-// environment variable.
+// environment variable(s).
 type Registration struct {
 	Name           string
+	Aliases        []string // alternate names accepted by Get; usually empty
 	EnvVar         string
+	ExtraEnvVars   []string // additional env vars that must be set; checked at sync time
 	MissingEnvHelp string
 	New            func(adminKey string) Provider
 }
 
 var (
 	registry      = map[string]Registration{}
-	providerOrder = []string{"openai", "anthropic"}
+	providerOrder = []string{"openai", "anthropic", "github-copilot"}
 )
 
 // Register adds a provider registration. Safe to call from init().
@@ -37,10 +39,20 @@ func Register(reg Registration) {
 	registry[reg.Name] = reg
 }
 
-// Get returns the provider registration under name.
+// Get returns the provider registration matching name OR any of its
+// Aliases. Canonical names take precedence over aliases.
 func Get(name string) (Registration, bool) {
-	reg, ok := registry[name]
-	return reg, ok
+	if reg, ok := registry[name]; ok {
+		return reg, true
+	}
+	for _, reg := range registry {
+		for _, a := range reg.Aliases {
+			if a == name {
+				return reg, true
+			}
+		}
+	}
+	return Registration{}, false
 }
 
 // All returns every registered provider in stable CLI order.

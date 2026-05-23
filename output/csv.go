@@ -14,6 +14,8 @@ import (
 var csvHeaders = []string{
 	"recorded_at", "provider", "model", "project_id", "api_key_id",
 	"prompt_tokens", "completion_tokens", "total_tokens", "cost_usd", "source_hash",
+	"product", "sku", "unit_type",
+	"usage_quantity", "unit_price_usd", "gross_amount_usd", "discount_amount_usd",
 }
 
 func WriteCSV(w io.Writer, records []providers.NormalizedCostRecord) error {
@@ -26,6 +28,7 @@ var focusHeaders = []string{
 	"ConsumedQuantity", "ConsumedUnit", "ResourceId", "SubAccountId",
 	"x_CostroidProvider", "x_CostroidModel", "x_PromptTokens",
 	"x_CompletionTokens", "x_SourceHash",
+	"x_Product", "x_SKU", "x_UnitType",
 }
 
 func WriteFOCUSCSV(w io.Writer, records []providers.NormalizedCostRecord) error {
@@ -85,10 +88,18 @@ func costRecordCSVRow(r providers.NormalizedCostRecord) []string {
 		strconv.Itoa(r.TotalTokens),
 		formatFloat(r.CostUSD),
 		r.SourceHash,
+		r.Product,
+		r.SKU,
+		r.UnitType,
+		formatFloat(r.UsageQuantity),
+		formatFloat(r.UnitPriceUSD),
+		formatFloat(r.GrossAmountUSD),
+		formatFloat(r.DiscountAmountUSD),
 	}
 }
 
 func focusCSVRow(r providers.NormalizedCostRecord) []string {
+	quantity, unit := focusQuantityAndUnit(r)
 	return []string{
 		r.RecordedAt,
 		chargePeriodEnd(r.RecordedAt),
@@ -98,8 +109,8 @@ func focusCSVRow(r providers.NormalizedCostRecord) []string {
 		"Usage",
 		formatFloat(r.CostUSD),
 		"USD",
-		strconv.Itoa(r.TotalTokens),
-		"tokens",
+		quantity,
+		unit,
 		r.APIKeyID,
 		r.ProjectID,
 		r.Provider,
@@ -107,7 +118,22 @@ func focusCSVRow(r providers.NormalizedCostRecord) []string {
 		strconv.Itoa(r.PromptTokens),
 		strconv.Itoa(r.CompletionTokens),
 		r.SourceHash,
+		r.Product,
+		r.SKU,
+		r.UnitType,
 	}
+}
+
+// focusQuantityAndUnit returns FOCUS ConsumedQuantity + ConsumedUnit. When
+// a provider reports actual tokens (TotalTokens > 0), uses tokens. When a
+// provider reports quantity in another unit (e.g., github-copilot premium
+// requests with TotalTokens=0 and UnitType="premium_requests"), falls back
+// to UsageQuantity + UnitType so the FOCUS row stays meaningful.
+func focusQuantityAndUnit(r providers.NormalizedCostRecord) (string, string) {
+	if r.TotalTokens == 0 && r.UnitType != "" {
+		return formatFloat(r.UsageQuantity), r.UnitType
+	}
+	return strconv.Itoa(r.TotalTokens), "tokens"
 }
 
 func chargePeriodEnd(recordedAt string) string {

@@ -62,12 +62,15 @@ Extract the archive and place `costroid-sync` somewhere on your `PATH`, such as 
 
 ## Quick Start
 
-Set an admin API key for at least one provider:
+Set credentials for at least one provider:
 
 ```sh
 export OPENAI_ADMIN_KEY=sk-admin-...
 # or
 export ANTHROPIC_ADMIN_KEY=sk-ant-admin-...
+# or, for GitHub Copilot premium-request billing:
+export GITHUB_PAT=ghp_...
+export GITHUB_ORG=your-org
 ```
 
 Sync recent usage:
@@ -92,10 +95,12 @@ Fetches provider usage and cost metadata and saves normalized local records.
 ```sh
 costroid-sync sync --provider openai --days 7
 costroid-sync sync --provider anthropic --days 7
+costroid-sync sync --provider github-copilot --days 7
+costroid-sync sync --provider copilot --days 7        # alias for github-copilot
 costroid-sync sync --provider all --days 30
 ```
 
-`--provider` defaults to `openai`.
+`--provider` defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
 
 ### `savings`
 
@@ -195,6 +200,37 @@ export ANTHROPIC_ADMIN_KEY=sk-ant-admin-...
 ```
 
 Normal Anthropic API keys may not work for admin usage and cost APIs.
+
+### GitHub Copilot
+
+`costroid-sync` reads Copilot premium-request billing metadata from your
+organization. It requires two environment variables:
+
+```sh
+export GITHUB_PAT=ghp_...
+export GITHUB_ORG=your-org
+```
+
+The token must have organization billing / premium-request usage read
+permission:
+
+- Fine-grained PAT: Administration: Read at organization scope.
+- Classic PAT: scopes vary by org/enterprise setup.
+
+Premium-request billing data may be unavailable depending on your account
+plan, organization permissions, or billing-platform eligibility. If
+`costroid-sync` returns a permission error, double-check the token scope,
+the org slug, and whether premium-request billing is enabled for your
+account.
+
+Costroid extracts billing metadata only — no Copilot prompts, completions,
+chat content, code completions, source code, repositories, issues, or PRs
+are read or stored.
+
+The `sync --days N` flag issues one daily-billing query per UTC day
+(clamped to 31). For longer windows, run multiple syncs across separate
+days. Today's billing data may be partial or empty depending on GitHub's
+processing lag.
 
 ## Local Storage
 

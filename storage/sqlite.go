@@ -52,7 +52,8 @@ func ResolveDBPath() (string, error) {
 }
 
 // InitDB ensures the parent directory exists (0700), opens the SQLite DB,
-// and applies the schema. Safe to call on every startup.
+// applies the schema, and migrates older schemas in place (adds any new
+// columns missing from pre-C9.1 databases). Safe to call on every startup.
 func InitDB(path string) (*sql.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, fmt.Errorf("create db dir: %w", err)
@@ -65,21 +66,32 @@ func InitDB(path string) (*sql.DB, error) {
 		db.Close()
 		return nil, fmt.Errorf("apply schema: %w", err)
 	}
+	if err := ensureCostRecordColumns(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate cost_records: %w", err)
+	}
 	return db, nil
 }
 
 const schemaSQL = `
 CREATE TABLE IF NOT EXISTS cost_records (
-    source_hash       TEXT PRIMARY KEY,
-    provider          TEXT NOT NULL,
-    model             TEXT NOT NULL,
-    project_id        TEXT NOT NULL DEFAULT '',
-    api_key_id        TEXT NOT NULL DEFAULT '',
-    prompt_tokens     INTEGER NOT NULL DEFAULT 0,
-    completion_tokens INTEGER NOT NULL DEFAULT 0,
-    total_tokens      INTEGER NOT NULL DEFAULT 0,
-    cost_usd          REAL NOT NULL DEFAULT 0,
-    recorded_at       TEXT NOT NULL
+    source_hash         TEXT PRIMARY KEY,
+    provider            TEXT NOT NULL,
+    model               TEXT NOT NULL,
+    project_id          TEXT NOT NULL DEFAULT '',
+    api_key_id          TEXT NOT NULL DEFAULT '',
+    prompt_tokens       INTEGER NOT NULL DEFAULT 0,
+    completion_tokens   INTEGER NOT NULL DEFAULT 0,
+    total_tokens        INTEGER NOT NULL DEFAULT 0,
+    cost_usd            REAL NOT NULL DEFAULT 0,
+    recorded_at         TEXT NOT NULL,
+    product             TEXT NOT NULL DEFAULT '',
+    sku                 TEXT NOT NULL DEFAULT '',
+    unit_type           TEXT NOT NULL DEFAULT '',
+    usage_quantity      REAL NOT NULL DEFAULT 0,
+    unit_price_usd      REAL NOT NULL DEFAULT 0,
+    gross_amount_usd    REAL NOT NULL DEFAULT 0,
+    discount_amount_usd REAL NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_cost_records_recorded_at ON cost_records(recorded_at);
 
@@ -91,21 +103,83 @@ CREATE TABLE IF NOT EXISTS local_budgets (
 );
 `
 
+// ensureCostRecordColumns adds C9.1 billing-metadata columns to pre-existing
+// cost_records tables that were created before this version. SQLite doesn't
+// support `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, so we introspect via
+// PRAGMA table_info first. Idempotent.
+func ensureCostRecordColumns(db *sql.DB) error {
+	existing, err := costRecordColumnSet(db)
+	if err != nil {
+		return err
+	}
+	migrations := []struct{ Name, DDL string }{
+		{"product", "ALTER TABLE cost_records ADD COLUMN product TEXT NOT NULL DEFAULT ''"},
+		{"sku", "ALTER TABLE cost_records ADD COLUMN sku TEXT NOT NULL DEFAULT ''"},
+		{"unit_type", "ALTER TABLE cost_records ADD COLUMN unit_type TEXT NOT NULL DEFAULT ''"},
+		{"usage_quantity", "ALTER TABLE cost_records ADD COLUMN usage_quantity REAL NOT NULL DEFAULT 0"},
+		{"unit_price_usd", "ALTER TABLE cost_records ADD COLUMN unit_price_usd REAL NOT NULL DEFAULT 0"},
+		{"gross_amount_usd", "ALTER TABLE cost_records ADD COLUMN gross_amount_usd REAL NOT NULL DEFAULT 0"},
+		{"discount_amount_usd", "ALTER TABLE cost_records ADD COLUMN discount_amount_usd REAL NOT NULL DEFAULT 0"},
+	}
+	for _, m := range migrations {
+		if existing[m.Name] {
+			continue
+		}
+		if _, err := db.Exec(m.DDL); err != nil {
+			return fmt.Errorf("add column %s: %w", m.Name, err)
+		}
+	}
+	return nil
+}
+
+func costRecordColumnSet(db *sql.DB) (map[string]bool, error) {
+	rows, err := db.Query("PRAGMA table_info(cost_records)")
+	if err != nil {
+		return nil, fmt.Errorf("pragma table_info: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var (
+			cid     int
+			name    string
+			ctype   string
+			notnull int
+			dflt    sql.NullString
+			pk      int
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return nil, fmt.Errorf("scan pragma: %w", err)
+		}
+		out[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows: %w", err)
+	}
+	return out, nil
+}
+
 const upsertSQL = `
 INSERT INTO cost_records (
     source_hash, provider, model, project_id, api_key_id,
-    prompt_tokens, completion_tokens, total_tokens, cost_usd, recorded_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    prompt_tokens, completion_tokens, total_tokens, cost_usd, recorded_at,
+    product, sku, unit_type, usage_quantity, unit_price_usd, gross_amount_usd, discount_amount_usd
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(source_hash) DO UPDATE SET
-    prompt_tokens     = excluded.prompt_tokens,
-    completion_tokens = excluded.completion_tokens,
-    total_tokens      = excluded.total_tokens,
-    cost_usd          = excluded.cost_usd
+    prompt_tokens       = excluded.prompt_tokens,
+    completion_tokens   = excluded.completion_tokens,
+    total_tokens        = excluded.total_tokens,
+    cost_usd            = excluded.cost_usd,
+    usage_quantity      = excluded.usage_quantity,
+    unit_price_usd      = excluded.unit_price_usd,
+    gross_amount_usd    = excluded.gross_amount_usd,
+    discount_amount_usd = excluded.discount_amount_usd
 `
 
 // SaveRecords UPSERTs each record by source_hash inside a single transaction.
-// On conflict, only the volatile columns (token counts, cost) are updated;
-// identity columns are never overwritten.
+// On conflict, only the volatile columns (token counts, cost, quantities)
+// are updated; identity columns (provider, model, project_id, api_key_id,
+// recorded_at, product, sku, unit_type) are never overwritten.
 func SaveRecords(ctx context.Context, db *sql.DB, records []providers.NormalizedCostRecord) error {
 	if len(records) == 0 {
 		return nil
@@ -125,6 +199,7 @@ func SaveRecords(ctx context.Context, db *sql.DB, records []providers.Normalized
 		if _, err := stmt.ExecContext(ctx,
 			r.SourceHash, r.Provider, r.Model, r.ProjectID, r.APIKeyID,
 			r.PromptTokens, r.CompletionTokens, r.TotalTokens, r.CostUSD, r.RecordedAt,
+			r.Product, r.SKU, r.UnitType, r.UsageQuantity, r.UnitPriceUSD, r.GrossAmountUSD, r.DiscountAmountUSD,
 		); err != nil {
 			_ = tx.Rollback()
 			return fmt.Errorf("save record %d: %w", i, err)
@@ -138,14 +213,16 @@ func SaveRecords(ctx context.Context, db *sql.DB, records []providers.Normalized
 
 const selectAllSQL = `
 SELECT source_hash, provider, model, project_id, api_key_id,
-       prompt_tokens, completion_tokens, total_tokens, cost_usd, recorded_at
+       prompt_tokens, completion_tokens, total_tokens, cost_usd, recorded_at,
+       product, sku, unit_type, usage_quantity, unit_price_usd, gross_amount_usd, discount_amount_usd
   FROM cost_records
  ORDER BY recorded_at DESC
 `
 
 const selectSinceSQL = `
 SELECT source_hash, provider, model, project_id, api_key_id,
-       prompt_tokens, completion_tokens, total_tokens, cost_usd, recorded_at
+       prompt_tokens, completion_tokens, total_tokens, cost_usd, recorded_at,
+       product, sku, unit_type, usage_quantity, unit_price_usd, gross_amount_usd, discount_amount_usd
   FROM cost_records
  WHERE recorded_at >= ?
  ORDER BY recorded_at DESC
@@ -174,6 +251,7 @@ func GetRecords(ctx context.Context, db *sql.DB, since time.Time) ([]providers.N
 		if err := rows.Scan(
 			&r.SourceHash, &r.Provider, &r.Model, &r.ProjectID, &r.APIKeyID,
 			&r.PromptTokens, &r.CompletionTokens, &r.TotalTokens, &r.CostUSD, &r.RecordedAt,
+			&r.Product, &r.SKU, &r.UnitType, &r.UsageQuantity, &r.UnitPriceUSD, &r.GrossAmountUSD, &r.DiscountAmountUSD,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
