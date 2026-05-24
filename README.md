@@ -62,18 +62,13 @@ Extract the archive and place `costroid-sync` somewhere on your `PATH`, such as 
 
 ## Quick Start
 
-Set credentials for at least one provider:
+Set credentials for at least one provider. See Provider Setup below for the full list.
 
 ```sh
 export OPENAI_ADMIN_KEY=sk-admin-...
-# or
-export ANTHROPIC_ADMIN_KEY=sk-ant-admin-...
-# or, for GitHub Copilot premium-request billing:
-export GITHUB_PAT=ghp_...
-export GITHUB_ORG=your-org
-# or, for Amazon Bedrock cost metadata:
-export AWS_ACCESS_KEY_ID=...
-export AWS_SECRET_ACCESS_KEY=...
+# or ANTHROPIC_ADMIN_KEY, GITHUB_PAT + GITHUB_ORG, GCP_SERVICE_ACCOUNT_JSON
+# + GCP_BILLING_PROJECT + GCP_BILLING_TABLE, AWS_ACCESS_KEY_ID
+# + AWS_SECRET_ACCESS_KEY, etc.
 ```
 
 Sync recent usage:
@@ -97,15 +92,10 @@ Fetches provider usage and cost metadata and saves normalized local records.
 
 ```sh
 costroid-sync sync --provider openai --days 7
-costroid-sync sync --provider anthropic --days 7
-costroid-sync sync --provider github-copilot --days 7
-costroid-sync sync --provider copilot --days 7        # alias for github-copilot
-costroid-sync sync --provider aws-bedrock --days 30
-costroid-sync sync --provider bedrock --days 30       # alias for aws-bedrock
 costroid-sync sync --provider all --days 30
 ```
 
-`--provider` defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
+Supported `--provider` values: `openai`, `anthropic`, `github-copilot` (alias `copilot`), `google-gemini` (alias `gemini`), `gcp-billing` (alias `gcp`), `azure-openai`, `aws-bedrock` (alias `bedrock`), `all`. Defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
 
 ### `savings`
 
@@ -205,6 +195,14 @@ export GEMINI_BILLING_EXPORT=/path/to/google-billing-export.csv
 export GEMINI_BILLING_PROJECT=your-gcp-project-id # optional
 export GEMINI_BILLING_SERVICE_FILTER="gemini,vertex" # optional
 
+# GCP Billing via BigQuery Cloud Billing detailed export
+export GCP_SERVICE_ACCOUNT_JSON=/path/to/service-account.json
+export GCP_BILLING_PROJECT=your-query-project
+export GCP_BILLING_TABLE=your-project.billing_export_data.gcp_billing_export_v1_XXXXXX
+export GCP_BILLING_PROJECT_FILTER=your-gcp-project-id # optional
+export GCP_BILLING_SERVICE_FILTER="Vertex AI,Gemini,Cloud Run" # optional
+export GCP_BILLING_CURRENCY=USD # optional, defaults to USD
+
 # Azure OpenAI Cost Management, optional Azure Monitor token metrics
 export AZURE_TENANT_ID=...
 export AZURE_CLIENT_ID=...
@@ -228,6 +226,12 @@ Provider notes:
   read permission; the `copilot` alias maps to `github-copilot`.
 - Google Gemini imports exported Cloud Billing CSV rows only. It skips
   `labels` and `system_labels` because they can contain free-form text.
+- GCP Billing (`gcp-billing`, alias `gcp`) queries the Cloud Billing
+  detailed export table in BigQuery via the REST API. Enable Cloud
+  Billing export to BigQuery first. The service account needs
+  `BigQuery Data Viewer` on the export dataset and `BigQuery Job User`
+  on `GCP_BILLING_PROJECT`. `labels` and `system_labels` are never
+  selected. The `google-gemini` CSV importer remains separate.
 - Azure OpenAI uses Cost Management for spend and optional Azure Monitor
   metrics for tokens. Request counts are never mapped to tokens.
 - Amazon Bedrock uses Cost Explorer as the authoritative spend source
@@ -241,7 +245,9 @@ Provider notes:
 - Bedrock InvokeModel, Converse, runtime, invocation logging, CloudWatch
   Logs, prompt/completion/message/content/request/response/raw payload
   APIs are never called.
-- Only USD rows are imported for Gemini, Azure OpenAI, and AWS Bedrock.
+- Only USD rows are imported by default for Gemini, GCP Billing, Azure
+  OpenAI, and AWS Bedrock. GCP Billing accepts `GCP_BILLING_CURRENCY`
+  to override (no FX conversion).
 
 ## Local Storage
 
@@ -273,8 +279,6 @@ Savings recommendations use static seed pricing for offline estimates. They are 
 
 ## Demo
 
-Example terminal output:
-
 ```text
 $ costroid-sync sync --provider openai --days 7
 Provider  Model   Tokens  Cost
@@ -284,9 +288,6 @@ $ costroid-sync forecast
 Metric                Value
 Current month spend   $24.5180
 Forecast month-end    $39.2264
-Method                linear_regression
-Days observed         18
-Days remaining        12
 ```
 
 ## Build From Source
