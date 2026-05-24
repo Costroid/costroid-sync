@@ -284,6 +284,68 @@ Caveats:
 - Only one CSV file per sync. For larger histories, concatenate first or
   run multiple syncs (UPSERT keeps results clean).
 
+### Azure OpenAI
+
+`costroid-sync` reads Azure OpenAI cost metadata from the Azure Cost
+Management Query API. When you provide your Azure OpenAI resource IDs,
+it additionally enriches cost records with token counts from Azure
+Monitor metrics.
+
+Setup:
+
+1. In Azure, create a service principal (Microsoft Entra ID application
+   registration) for `costroid-sync`. Assign it:
+   - `Cost Management Reader` on the subscription (or whatever scope you
+     plan to query).
+   - Optional: `Monitoring Reader` on each Azure OpenAI resource you
+     want token enrichment for.
+2. Set:
+
+   ```sh
+   export AZURE_TENANT_ID=...
+   export AZURE_CLIENT_ID=...
+   export AZURE_CLIENT_SECRET=...
+   export AZURE_SUBSCRIPTION_ID=...
+   # Optional — override the cost-management scope:
+   export AZURE_COST_SCOPE=subscriptions/<id>
+   # Optional — enable per-resource token enrichment via Azure Monitor:
+   export AZURE_OPENAI_RESOURCE_IDS=/subscriptions/.../resourceGroups/.../providers/Microsoft.CognitiveServices/accounts/...
+   ```
+
+3. Sync:
+
+   ```sh
+   costroid-sync sync --provider azure-openai --days 30
+   ```
+
+What gets stored:
+
+- Cost, meter/SKU, product/service name, usage quantity, unit type,
+  resource ID/group, subscription scope, day — billing metadata only.
+- When `AZURE_OPENAI_RESOURCE_IDS` is set and Azure Monitor metrics can
+  be safely matched to a cost row, prompt/completion/total token counts
+  are populated from the `ProcessedPromptTokens`, `GeneratedTokens`, and
+  `TotalTokens` metrics.
+- Azure OpenAI prompts, completions, chat content, messages, function
+  arguments, tool call text, request bodies, response bodies, or
+  diagnostic logs are NEVER read or stored. Costroid does not call Azure
+  OpenAI generation APIs.
+
+Caveats:
+
+- Only USD rows are imported. Non-USD rows are silently skipped.
+- Cost Management data typically lags actual usage by several hours.
+  Re-run `sync` with a wider `--days` window to pick up late arrivals.
+- A single Azure OpenAI resource can host multiple model deployments.
+  When the cost meter does not uniquely identify a deployment, Costroid
+  leaves token counts at 0 rather than guessing — Cost Management cost
+  remains authoritative. To get full token attribution, deploy each
+  model in a separate Azure OpenAI resource (or accept zero-token rows
+  for shared-resource deployments).
+- Request count metrics from Azure Monitor are NOT mapped to tokens.
+  Tokens are tokens; requests are requests; conflating them would be
+  misleading.
+
 ## Local Storage
 
 Default database:
