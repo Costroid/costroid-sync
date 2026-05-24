@@ -2,7 +2,7 @@
 
 See what your AI actually costs.
 
-`costroid-sync` is an open-source Go CLI for tracking AI/LLM costs locally across providers. It reads usage and cost metadata from provider admin APIs, normalizes it, and stores it in a local SQLite database on your machine.
+`costroid-sync` is an open-source Go CLI for tracking AI/LLM costs locally across providers. It reads usage and cost metadata from provider admin APIs or billing exports, normalizes it, and stores it in a local SQLite database on your machine.
 
 API keys stay on your machine. Costroid™ does not proxy your model calls, does not receive your provider credentials, and does not store prompt or completion data.
 
@@ -15,7 +15,7 @@ Metadata only:
 - timestamps
 - cost amounts
 - API key IDs
-- project or workspace IDs
+- project, workspace, resource, account, or billing IDs
 
 Never collected, stored, logged, printed, cached, or transmitted:
 
@@ -25,6 +25,8 @@ Never collected, stored, logged, printed, cached, or transmitted:
 - content
 - raw provider payloads
 - request or response bodies
+- source code
+- diagnostic or invocation logs
 
 ## Install
 
@@ -62,13 +64,10 @@ Extract the archive and place `costroid-sync` somewhere on your `PATH`, such as 
 
 ## Quick Start
 
-Set credentials for at least one provider. See Provider Setup below for the full list.
+Set credentials for at least one provider. See [Provider Setup](#provider-setup) for the full list.
 
 ```sh
 export OPENAI_ADMIN_KEY=sk-admin-...
-# or ANTHROPIC_ADMIN_KEY, GITHUB_PAT + GITHUB_ORG, GCP_SERVICE_ACCOUNT_JSON
-# + GCP_BILLING_PROJECT + GCP_BILLING_TABLE, AWS_ACCESS_KEY_ID
-# + AWS_SECRET_ACCESS_KEY, etc.
 ```
 
 Sync recent usage:
@@ -86,168 +85,35 @@ costroid-sync forecast
 
 ## Commands
 
-### `sync`
+| Command | Purpose | Example |
+| --- | --- | --- |
+| `sync` | Fetch provider usage and cost metadata into local SQLite. | `costroid-sync sync --provider openai --days 7` |
+| `savings` | Show local savings recommendations from offline pricing estimates. | `costroid-sync savings` |
+| `history` | Show recent local cost records. | `costroid-sync history --last 30d` |
+| `trend` | Aggregate local spend by week or month. | `costroid-sync trend --weekly` |
+| `forecast` | Forecast current calendar month spend from local daily totals. | `costroid-sync forecast` |
+| `anomalies` | List local daily spend spikes above the rolling baseline. | `costroid-sync anomalies` |
+| `budget` | Set or check a local spending budget. | `costroid-sync budget --set 500 --period monthly` |
+| `export` | Export local metadata records to stdout. | `costroid-sync export --format csv > costs.csv` |
+| `version` | Print the CLI version. | `costroid-sync version` |
 
-Fetches provider usage and cost metadata and saves normalized local records.
-
-```sh
-costroid-sync sync --provider openai --days 7
-costroid-sync sync --provider all --days 30
-```
-
-Supported `--provider` values: `openai`, `anthropic`, `github-copilot` (alias `copilot`), `google-gemini` (alias `gemini`), `gcp-billing` (alias `gcp`), `azure-openai`, `aws-bedrock` (alias `bedrock`), `all`. Defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
-
-### `savings`
-
-Shows local savings recommendations based on seeded offline pricing estimates.
-
-```sh
-costroid-sync savings
-```
-
-### `history`
-
-Shows recent local cost records.
-
-```sh
-costroid-sync history --last 30d
-```
-
-### `trend`
-
-Aggregates local spend by week or month.
-
-```sh
-costroid-sync trend --weekly
-costroid-sync trend --monthly
-```
-
-### `forecast`
-
-Forecasts current calendar month spend from local daily totals.
-
-```sh
-costroid-sync forecast
-```
-
-### `anomalies`
-
-Lists local daily spend spikes above the rolling baseline.
-
-```sh
-costroid-sync anomalies
-```
-
-### `budget`
-
-Sets or checks a local spending budget.
-
-```sh
-costroid-sync budget --set 500 --period monthly
-costroid-sync budget
-costroid-sync budget --period weekly
-```
-
-### `export`
-
-Exports local metadata records to stdout. Redirect stdout to a file.
-
-```sh
-costroid-sync export --format csv > costs.csv
-costroid-sync export --format json > costs.json
-costroid-sync export --format focus > costs-focus.csv
-costroid-sync export --format markdown > costs.md
-```
-
-Supported formats:
-
-- `csv`
-- `json`
-- `focus`
-- `markdown`
-
-### `version`
-
-Prints the CLI version.
-
-```sh
-costroid-sync version
-```
+Supported `sync --provider` values: `openai`, `anthropic`, `github-copilot` (alias `copilot`), `google-gemini` (alias `gemini`), `gcp-billing` (alias `gcp`), `azure-openai`, `aws-bedrock` (alias `bedrock`), `all`. Defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
 
 ## Provider Setup
 
-Costroid reads only provider billing and usage metadata. Provider secrets
-stay in your shell and process.
+Costroid reads only provider billing and usage metadata. Provider secrets stay in your shell and process.
 
-```sh
-# OpenAI organization usage/cost APIs
-export OPENAI_ADMIN_KEY=sk-admin-...
+| Provider | Slug and aliases | Data source | Required env vars | Docs |
+| --- | --- | --- | --- | --- |
+| OpenAI | `openai` | OpenAI organization usage/cost metadata APIs | `OPENAI_ADMIN_KEY` | [docs/providers/openai.md](docs/providers/openai.md) |
+| Anthropic | `anthropic` | Anthropic admin usage/cost metadata APIs | `ANTHROPIC_ADMIN_KEY` | [docs/providers/anthropic.md](docs/providers/anthropic.md) |
+| GitHub Copilot | `github-copilot`, `copilot` | GitHub premium request billing metadata | `GITHUB_PAT`, `GITHUB_ORG` | [docs/providers/github-copilot.md](docs/providers/github-copilot.md) |
+| Google Gemini | `google-gemini`, `gemini` | Google Cloud Billing CSV export | `GEMINI_BILLING_EXPORT` | [docs/providers/google-gemini.md](docs/providers/google-gemini.md) |
+| Azure OpenAI | `azure-openai` | Azure Cost Management, optional Azure Monitor token metrics | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SUBSCRIPTION_ID` | [docs/providers/azure-openai.md](docs/providers/azure-openai.md) |
+| AWS Bedrock | `aws-bedrock`, `bedrock` | AWS Cost Explorer, optional CloudWatch token metrics | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | [docs/providers/aws-bedrock.md](docs/providers/aws-bedrock.md) |
+| GCP Billing | `gcp-billing`, `gcp` | BigQuery Cloud Billing detailed export via REST | `GCP_SERVICE_ACCOUNT_JSON`, `GCP_BILLING_PROJECT`, `GCP_BILLING_TABLE` | [docs/providers/gcp-billing.md](docs/providers/gcp-billing.md) |
 
-# Anthropic organization usage/cost APIs
-export ANTHROPIC_ADMIN_KEY=sk-ant-admin-...
-
-# GitHub Copilot premium-request billing
-export GITHUB_PAT=ghp_...
-export GITHUB_ORG=your-org
-
-# Google Gemini Cloud Billing export CSV
-export GEMINI_BILLING_EXPORT=/path/to/google-billing-export.csv
-export GEMINI_BILLING_PROJECT=your-gcp-project-id # optional
-export GEMINI_BILLING_SERVICE_FILTER="gemini,vertex" # optional
-
-# GCP Billing via BigQuery Cloud Billing detailed export
-export GCP_SERVICE_ACCOUNT_JSON=/path/to/service-account.json
-export GCP_BILLING_PROJECT=your-query-project
-export GCP_BILLING_TABLE=your-project.billing_export_data.gcp_billing_export_v1_XXXXXX
-export GCP_BILLING_PROJECT_FILTER=your-gcp-project-id # optional
-export GCP_BILLING_SERVICE_FILTER="Vertex AI,Gemini,Cloud Run" # optional
-export GCP_BILLING_CURRENCY=USD # optional, defaults to USD
-
-# Azure OpenAI Cost Management, optional Azure Monitor token metrics
-export AZURE_TENANT_ID=...
-export AZURE_CLIENT_ID=...
-export AZURE_CLIENT_SECRET=...
-export AZURE_SUBSCRIPTION_ID=...
-export AZURE_COST_SCOPE=subscriptions/<id> # optional
-export AZURE_OPENAI_RESOURCE_IDS=/subscriptions/.../Microsoft.CognitiveServices/accounts/... # optional
-
-# Amazon Bedrock Cost Explorer, optional CloudWatch token metrics
-export AWS_ACCESS_KEY_ID=...
-export AWS_SECRET_ACCESS_KEY=...
-export AWS_SESSION_TOKEN=... # optional
-export AWS_ACCOUNT_ID=123456789012 # optional metadata
-export AWS_COST_EXPLORER_REGION=us-east-1 # optional, defaults to us-east-1
-export AWS_BEDROCK_REGIONS=us-east-1,us-west-2 # optional token enrichment
-```
-
-Provider notes:
-
-- GitHub Copilot requires organization billing / premium-request usage
-  read permission; the `copilot` alias maps to `github-copilot`.
-- Google Gemini imports exported Cloud Billing CSV rows only. It skips
-  `labels` and `system_labels` because they can contain free-form text.
-- GCP Billing (`gcp-billing`, alias `gcp`) queries the Cloud Billing
-  detailed export table in BigQuery via the REST API. Enable Cloud
-  Billing export to BigQuery first. The service account needs
-  `BigQuery Data Viewer` on the export dataset and `BigQuery Job User`
-  on `GCP_BILLING_PROJECT`. `labels` and `system_labels` are never
-  selected. The `google-gemini` CSV importer remains separate.
-- Azure OpenAI uses Cost Management for spend and optional Azure Monitor
-  metrics for tokens. Request counts are never mapped to tokens.
-- Amazon Bedrock uses Cost Explorer as the authoritative spend source
-  and optional CloudWatch `InputTokenCount` / `OutputTokenCount` metrics
-  for token enrichment. `bedrock` maps to `aws-bedrock`; there is no
-  generic `aws` alias.
-- Cost Explorer `UsageQuantity` is billing metadata only and is never
-  mapped into prompt, completion, or total token fields.
-- Token counts can be zero when metrics are unavailable, not configured,
-  or cannot be safely joined to an authoritative cost row.
-- Bedrock InvokeModel, Converse, runtime, invocation logging, CloudWatch
-  Logs, prompt/completion/message/content/request/response/raw payload
-  APIs are never called.
-- Only USD rows are imported by default for Gemini, GCP Billing, Azure
-  OpenAI, and AWS Bedrock. GCP Billing accepts `GCP_BILLING_CURRENCY`
-  to override (no FX conversion).
+Provider docs index: [docs/providers/README.md](docs/providers/README.md)
 
 ## Local Storage
 
@@ -265,30 +131,27 @@ export COSTROID_DB=/path/to/costroid.db
 
 The database stores normalized metadata records and local budget settings only.
 
+## Export Formats
+
+Supported export formats:
+
+- `csv`
+- `json`
+- `focus`
+- `markdown`
+
 ## Security And Privacy
 
 - No proxy: your model traffic does not pass through Costroid.
 - No prompt reading: provider integrations extract only cost metadata fields.
 - No prompt storage: prompts, completions, messages, content, and raw payloads are never stored.
+- No request or response body storage: Costroid stores normalized records only.
 - No credentials on Costroid servers: provider admin keys remain local to your shell and process.
 - Local SQLite only: open-core analytics run on your machine.
 
 ## Pricing Note
 
 Savings recommendations use static seed pricing for offline estimates. They are useful for directionally comparing model costs, but they are not a live provider pricing or availability guarantee.
-
-## Demo
-
-```text
-$ costroid-sync sync --provider openai --days 7
-Provider  Model   Tokens  Cost
-openai    gpt-4o  152400  $2.3819
-
-$ costroid-sync forecast
-Metric                Value
-Current month spend   $24.5180
-Forecast month-end    $39.2264
-```
 
 ## Build From Source
 
