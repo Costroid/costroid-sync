@@ -71,6 +71,9 @@ export ANTHROPIC_ADMIN_KEY=sk-ant-admin-...
 # or, for GitHub Copilot premium-request billing:
 export GITHUB_PAT=ghp_...
 export GITHUB_ORG=your-org
+# or, for Amazon Bedrock cost metadata:
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
 ```
 
 Sync recent usage:
@@ -97,6 +100,8 @@ costroid-sync sync --provider openai --days 7
 costroid-sync sync --provider anthropic --days 7
 costroid-sync sync --provider github-copilot --days 7
 costroid-sync sync --provider copilot --days 7        # alias for github-copilot
+costroid-sync sync --provider aws-bedrock --days 30
+costroid-sync sync --provider bedrock --days 30       # alias for aws-bedrock
 costroid-sync sync --provider all --days 30
 ```
 
@@ -181,170 +186,62 @@ costroid-sync version
 
 ## Provider Setup
 
-### OpenAI
-
-`costroid-sync` requires an OpenAI Admin API key for usage and cost endpoints.
+Costroid reads only provider billing and usage metadata. Provider secrets
+stay in your shell and process.
 
 ```sh
+# OpenAI organization usage/cost APIs
 export OPENAI_ADMIN_KEY=sk-admin-...
-```
 
-Normal project API keys may not work for organization usage and cost APIs.
-
-### Anthropic
-
-`costroid-sync` requires an Anthropic Admin API key.
-
-```sh
+# Anthropic organization usage/cost APIs
 export ANTHROPIC_ADMIN_KEY=sk-ant-admin-...
-```
 
-Normal Anthropic API keys may not work for admin usage and cost APIs.
-
-### GitHub Copilot
-
-`costroid-sync` reads Copilot premium-request billing metadata from your
-organization. It requires two environment variables:
-
-```sh
+# GitHub Copilot premium-request billing
 export GITHUB_PAT=ghp_...
 export GITHUB_ORG=your-org
+
+# Google Gemini Cloud Billing export CSV
+export GEMINI_BILLING_EXPORT=/path/to/google-billing-export.csv
+export GEMINI_BILLING_PROJECT=your-gcp-project-id # optional
+export GEMINI_BILLING_SERVICE_FILTER="gemini,vertex" # optional
+
+# Azure OpenAI Cost Management, optional Azure Monitor token metrics
+export AZURE_TENANT_ID=...
+export AZURE_CLIENT_ID=...
+export AZURE_CLIENT_SECRET=...
+export AZURE_SUBSCRIPTION_ID=...
+export AZURE_COST_SCOPE=subscriptions/<id> # optional
+export AZURE_OPENAI_RESOURCE_IDS=/subscriptions/.../Microsoft.CognitiveServices/accounts/... # optional
+
+# Amazon Bedrock Cost Explorer, optional CloudWatch token metrics
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_SESSION_TOKEN=... # optional
+export AWS_ACCOUNT_ID=123456789012 # optional metadata
+export AWS_COST_EXPLORER_REGION=us-east-1 # optional, defaults to us-east-1
+export AWS_BEDROCK_REGIONS=us-east-1,us-west-2 # optional token enrichment
 ```
 
-The token must have organization billing / premium-request usage read
-permission:
+Provider notes:
 
-- Fine-grained PAT: Administration: Read at organization scope.
-- Classic PAT: scopes vary by org/enterprise setup.
-
-Premium-request billing data may be unavailable depending on your account
-plan, organization permissions, or billing-platform eligibility. If
-`costroid-sync` returns a permission error, double-check the token scope,
-the org slug, and whether premium-request billing is enabled for your
-account.
-
-Costroid extracts billing metadata only — no Copilot prompts, completions,
-chat content, code completions, source code, repositories, issues, or PRs
-are read or stored.
-
-The `sync --days N` flag issues one daily-billing query per UTC day
-(clamped to 31). For longer windows, run multiple syncs across separate
-days. Today's billing data may be partial or empty depending on GitHub's
-processing lag.
-
-### Google Gemini
-
-`costroid-sync` reads Gemini billing metadata from a Google Cloud Billing
-export file. Google's public REST APIs do not expose detailed per-SKU
-Gemini usage directly; the official detailed-billing path is BigQuery
-billing export.
-
-Setup:
-
-1. In the Google Cloud Console, enable Cloud Billing export to BigQuery
-   for your billing account.
-2. In BigQuery, query the billing export table for the date range you
-   want and export the results to CSV. You can filter to Gemini SKUs
-   yourself, or let Costroid do the filtering.
-3. Set:
-
-   ```sh
-   export GEMINI_BILLING_EXPORT=/path/to/google-billing-export.csv
-   # Optional — filter rows by GCP project ID:
-   export GEMINI_BILLING_PROJECT=your-gcp-project-id
-   # Optional — override the default Gemini service-name match
-   # (comma-separated substrings):
-   export GEMINI_BILLING_SERVICE_FILTER="gemini,vertex"
-   ```
-
-4. Sync:
-
-   ```sh
-   costroid-sync sync --provider google-gemini --days 30
-   # or:
-   costroid-sync sync --provider gemini --days 30
-   ```
-
-What gets stored:
-
-- Cost, SKU, product, usage quantity, unit type, project ID,
-  usage_start_time — billing metadata only.
-- Gemini API prompts, completions, chat content, code, repository data,
-  user text, or model responses are NEVER read or stored. Costroid does
-  not call Gemini generation APIs.
-- Even if your CSV export includes `labels` or `system_labels` columns,
-  Costroid skips them entirely (they can contain free-form text).
-
-Caveats:
-
-- Only USD rows are imported. Non-USD rows are silently skipped.
-- Cloud Billing data is typically delayed several hours after the actual
-  API call. Re-run `sync` with a wider `--days` window to pick up late
-  arrivals.
-- Only one CSV file per sync. For larger histories, concatenate first or
-  run multiple syncs (UPSERT keeps results clean).
-
-### Azure OpenAI
-
-`costroid-sync` reads Azure OpenAI cost metadata from the Azure Cost
-Management Query API. When you provide your Azure OpenAI resource IDs,
-it additionally enriches cost records with token counts from Azure
-Monitor metrics.
-
-Setup:
-
-1. In Azure, create a service principal (Microsoft Entra ID application
-   registration) for `costroid-sync`. Assign it:
-   - `Cost Management Reader` on the subscription (or whatever scope you
-     plan to query).
-   - Optional: `Monitoring Reader` on each Azure OpenAI resource you
-     want token enrichment for.
-2. Set:
-
-   ```sh
-   export AZURE_TENANT_ID=...
-   export AZURE_CLIENT_ID=...
-   export AZURE_CLIENT_SECRET=...
-   export AZURE_SUBSCRIPTION_ID=...
-   # Optional — override the cost-management scope:
-   export AZURE_COST_SCOPE=subscriptions/<id>
-   # Optional — enable per-resource token enrichment via Azure Monitor:
-   export AZURE_OPENAI_RESOURCE_IDS=/subscriptions/.../resourceGroups/.../providers/Microsoft.CognitiveServices/accounts/...
-   ```
-
-3. Sync:
-
-   ```sh
-   costroid-sync sync --provider azure-openai --days 30
-   ```
-
-What gets stored:
-
-- Cost, meter/SKU, product/service name, usage quantity, unit type,
-  resource ID/group, subscription scope, day — billing metadata only.
-- When `AZURE_OPENAI_RESOURCE_IDS` is set and Azure Monitor metrics can
-  be safely matched to a cost row, prompt/completion/total token counts
-  are populated from the `ProcessedPromptTokens`, `GeneratedTokens`, and
-  `TotalTokens` metrics.
-- Azure OpenAI prompts, completions, chat content, messages, function
-  arguments, tool call text, request bodies, response bodies, or
-  diagnostic logs are NEVER read or stored. Costroid does not call Azure
-  OpenAI generation APIs.
-
-Caveats:
-
-- Only USD rows are imported. Non-USD rows are silently skipped.
-- Cost Management data typically lags actual usage by several hours.
-  Re-run `sync` with a wider `--days` window to pick up late arrivals.
-- A single Azure OpenAI resource can host multiple model deployments.
-  When the cost meter does not uniquely identify a deployment, Costroid
-  leaves token counts at 0 rather than guessing — Cost Management cost
-  remains authoritative. To get full token attribution, deploy each
-  model in a separate Azure OpenAI resource (or accept zero-token rows
-  for shared-resource deployments).
-- Request count metrics from Azure Monitor are NOT mapped to tokens.
-  Tokens are tokens; requests are requests; conflating them would be
-  misleading.
+- GitHub Copilot requires organization billing / premium-request usage
+  read permission; the `copilot` alias maps to `github-copilot`.
+- Google Gemini imports exported Cloud Billing CSV rows only. It skips
+  `labels` and `system_labels` because they can contain free-form text.
+- Azure OpenAI uses Cost Management for spend and optional Azure Monitor
+  metrics for tokens. Request counts are never mapped to tokens.
+- Amazon Bedrock uses Cost Explorer as the authoritative spend source
+  and optional CloudWatch `InputTokenCount` / `OutputTokenCount` metrics
+  for token enrichment. `bedrock` maps to `aws-bedrock`; there is no
+  generic `aws` alias.
+- Cost Explorer `UsageQuantity` is billing metadata only and is never
+  mapped into prompt, completion, or total token fields.
+- Token counts can be zero when metrics are unavailable, not configured,
+  or cannot be safely joined to an authoritative cost row.
+- Bedrock InvokeModel, Converse, runtime, invocation logging, CloudWatch
+  Logs, prompt/completion/message/content/request/response/raw payload
+  APIs are never called.
+- Only USD rows are imported for Gemini, Azure OpenAI, and AWS Bedrock.
 
 ## Local Storage
 

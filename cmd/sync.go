@@ -28,7 +28,7 @@ var syncCmd = &cobra.Command{
 }
 
 func init() {
-	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (openai, anthropic, github-copilot (alias: copilot), google-gemini (alias: gemini), azure-openai, all)")
+	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (openai, anthropic, github-copilot (alias: copilot), google-gemini (alias: gemini), azure-openai, aws-bedrock (alias: bedrock), all)")
 	syncCmd.Flags().IntVar(&syncDays, "days", 30, "lookback window in days")
 	rootCmd.AddCommand(syncCmd)
 }
@@ -131,7 +131,7 @@ func fetchSelectedProviders(ctx context.Context, regs []providers.Registration, 
 		records = append(records, fetched...)
 	}
 	if skipMissing && configured == 0 {
-		return nil, nil, errors.New("no provider credentials configured; export at least one of OPENAI_ADMIN_KEY, ANTHROPIC_ADMIN_KEY, GITHUB_PAT + GITHUB_ORG, GEMINI_BILLING_EXPORT, or AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET + AZURE_SUBSCRIPTION_ID")
+		return nil, nil, errors.New("no provider credentials configured; export at least one of OPENAI_ADMIN_KEY, ANTHROPIC_ADMIN_KEY, GITHUB_PAT + GITHUB_ORG, GEMINI_BILLING_EXPORT, AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET + AZURE_SUBSCRIPTION_ID, or AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY")
 	}
 	return records, notes, nil
 }
