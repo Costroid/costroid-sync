@@ -28,7 +28,7 @@ var syncCmd = &cobra.Command{
 }
 
 func init() {
-	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (openai, anthropic, github-copilot (alias: copilot), all)")
+	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (openai, anthropic, github-copilot (alias: copilot), google-gemini (alias: gemini), all)")
 	syncCmd.Flags().IntVar(&syncDays, "days", 30, "lookback window in days")
 	rootCmd.AddCommand(syncCmd)
 }
@@ -131,7 +131,7 @@ func fetchSelectedProviders(ctx context.Context, regs []providers.Registration, 
 		records = append(records, fetched...)
 	}
 	if skipMissing && configured == 0 {
-		return nil, nil, errors.New("no provider admin keys are set; export OPENAI_ADMIN_KEY, ANTHROPIC_ADMIN_KEY, or GITHUB_PAT + GITHUB_ORG")
+		return nil, nil, errors.New("no provider credentials configured; export at least one of OPENAI_ADMIN_KEY, ANTHROPIC_ADMIN_KEY, GITHUB_PAT + GITHUB_ORG, or GEMINI_BILLING_EXPORT")
 	}
 	return records, notes, nil
 }

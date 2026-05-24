@@ -31,7 +31,7 @@ type Registration struct {
 
 var (
 	registry      = map[string]Registration{}
-	providerOrder = []string{"openai", "anthropic", "github-copilot"}
+	providerOrder = []string{"openai", "anthropic", "github-copilot", "google-gemini"}
 )
 
 // Register adds a provider registration. Safe to call from init().

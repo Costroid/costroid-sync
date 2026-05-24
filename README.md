@@ -232,6 +232,58 @@ The `sync --days N` flag issues one daily-billing query per UTC day
 days. Today's billing data may be partial or empty depending on GitHub's
 processing lag.
 
+### Google Gemini
+
+`costroid-sync` reads Gemini billing metadata from a Google Cloud Billing
+export file. Google's public REST APIs do not expose detailed per-SKU
+Gemini usage directly; the official detailed-billing path is BigQuery
+billing export.
+
+Setup:
+
+1. In the Google Cloud Console, enable Cloud Billing export to BigQuery
+   for your billing account.
+2. In BigQuery, query the billing export table for the date range you
+   want and export the results to CSV. You can filter to Gemini SKUs
+   yourself, or let Costroid do the filtering.
+3. Set:
+
+   ```sh
+   export GEMINI_BILLING_EXPORT=/path/to/google-billing-export.csv
+   # Optional — filter rows by GCP project ID:
+   export GEMINI_BILLING_PROJECT=your-gcp-project-id
+   # Optional — override the default Gemini service-name match
+   # (comma-separated substrings):
+   export GEMINI_BILLING_SERVICE_FILTER="gemini,vertex"
+   ```
+
+4. Sync:
+
+   ```sh
+   costroid-sync sync --provider google-gemini --days 30
+   # or:
+   costroid-sync sync --provider gemini --days 30
+   ```
+
+What gets stored:
+
+- Cost, SKU, product, usage quantity, unit type, project ID,
+  usage_start_time — billing metadata only.
+- Gemini API prompts, completions, chat content, code, repository data,
+  user text, or model responses are NEVER read or stored. Costroid does
+  not call Gemini generation APIs.
+- Even if your CSV export includes `labels` or `system_labels` columns,
+  Costroid skips them entirely (they can contain free-form text).
+
+Caveats:
+
+- Only USD rows are imported. Non-USD rows are silently skipped.
+- Cloud Billing data is typically delayed several hours after the actual
+  API call. Re-run `sync` with a wider `--days` window to pick up late
+  arrivals.
+- Only one CSV file per sync. For larger histories, concatenate first or
+  run multiple syncs (UPSERT keeps results clean).
+
 ## Local Storage
 
 Default database:
