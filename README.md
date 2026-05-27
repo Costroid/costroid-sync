@@ -30,37 +30,46 @@ Never collected, stored, logged, printed, cached, or transmitted:
 
 ## Install
 
-### Install Script
+See [docs/install.md](docs/install.md) for OS-specific details, troubleshooting, PATH notes, and checksum verification.
 
-Linux prebuilt binaries are available for `amd64` and `arm64`.
+### Linux and WSL (prebuilt)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.sh | sh
 ```
 
-To install a specific release:
+Supports `amd64` and `arm64`. The script verifies the SHA256 checksum of the downloaded archive. Pin a release with `VERSION=vX.Y.Z`:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.sh | VERSION=vX.Y.Z sh
 ```
 
-macOS and Windows prebuilt binaries are not available yet because this CLI uses `go-sqlite3`, which requires CGO. Use `go install` on those platforms for now.
+### macOS (from source)
 
-### Go Install
+No prebuilt macOS binary yet: `costroid-sync` uses `go-sqlite3`, which requires CGO and isn't cross-compiled from the current Linux release runner. Install via Go:
+
+```sh
+xcode-select --install
+go install github.com/costroid/costroid-sync@latest
+```
+
+### Windows (from source via PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.ps1 | iex
+```
+
+Builds from source via `go install`; requires Go 1.22+ and a C compiler (MinGW-w64 or msys2). No prebuilt Windows binary yet.
+
+### All platforms (Go fallback)
 
 ```sh
 go install github.com/costroid/costroid-sync@latest
 ```
 
-### Manual Download
+### Manual download (Linux)
 
-Download a release archive from:
-
-```text
-https://github.com/Costroid/costroid-sync/releases
-```
-
-Extract the archive and place `costroid-sync` somewhere on your `PATH`, such as `/usr/local/bin`.
+Download the tarball matching your architecture from <https://github.com/Costroid/costroid-sync/releases>, extract `costroid-sync`, and place it somewhere on your `PATH`.
 
 ## Quick Start
 
