@@ -11,14 +11,23 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/costroid/costroid-sync/analysis"
+	"github.com/costroid/costroid-sync/client"
 	"github.com/costroid/costroid-sync/output"
 	"github.com/costroid/costroid-sync/providers"
 	"github.com/costroid/costroid-sync/storage"
 )
 
+const (
+	defaultCostroidAPIURL = "https://costroid.com"
+	envCostroidAPIURL     = "COSTROID_API_URL"
+	envCostroidOrgID      = "COSTROID_ORG_ID"
+	envCostroidAgentKey   = "COSTROID_AGENT_KEY"
+)
+
 var (
 	syncProvider string
 	syncDays     int
+	syncPush     bool
 )
 
 var syncCmd = &cobra.Command{
@@ -30,6 +39,7 @@ var syncCmd = &cobra.Command{
 func init() {
 	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (openai, anthropic, github-copilot (alias: copilot), google-gemini (alias: gemini), gcp-billing (alias: gcp), azure-openai, aws-bedrock (alias: bedrock), all)")
 	syncCmd.Flags().IntVar(&syncDays, "days", 30, "lookback window in days")
+	syncCmd.Flags().BoolVar(&syncPush, "push", false, "push synced metadata records to Costroid Cloud")
 	rootCmd.AddCommand(syncCmd)
 }
 
@@ -60,6 +70,7 @@ func runSync(cmd *cobra.Command, args []string) error {
 	if err := storage.SaveRecords(ctx, db, records); err != nil {
 		return fmt.Errorf("save records: %w", err)
 	}
+	maybePushCloud(cmd, records)
 
 	for _, note := range notes {
 		fmt.Fprintln(cmd.OutOrStdout(), note)
@@ -72,7 +83,55 @@ func runSync(cmd *cobra.Command, args []string) error {
 	if tip := bestSavingsTip(records); tip != "" {
 		fmt.Fprintln(cmd.OutOrStdout(), tip)
 	}
+	if !syncPush {
+		fmt.Fprintln(cmd.OutOrStdout(), "Want shared team dashboards? costroid.com")
+	}
 	return nil
+}
+
+type cloudPushConfig struct {
+	BaseURL  string
+	OrgID    string
+	AgentKey string
+}
+
+func maybePushCloud(cmd *cobra.Command, records []providers.NormalizedCostRecord) {
+	if !syncPush || len(records) == 0 {
+		return
+	}
+	cfg, missing := cloudPushConfigFromEnv()
+	out := cmd.OutOrStdout()
+	if len(missing) > 0 {
+		fmt.Fprintf(out, "Cloud push skipped: set %s. Local records were saved.\n", strings.Join(missing, ", "))
+		return
+	}
+
+	pushCtx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
+	defer cancel()
+	if err := client.PushRecords(pushCtx, cfg.BaseURL, cfg.OrgID, cfg.AgentKey, records); err != nil {
+		fmt.Fprintf(out, "Cloud push did not complete: %v. Local records were saved.\n", err)
+		return
+	}
+	fmt.Fprintf(out, "Pushed %d records to Costroid Cloud.\n", len(records))
+}
+
+func cloudPushConfigFromEnv() (cloudPushConfig, []string) {
+	cfg := cloudPushConfig{
+		BaseURL:  strings.TrimSpace(os.Getenv(envCostroidAPIURL)),
+		OrgID:    strings.TrimSpace(os.Getenv(envCostroidOrgID)),
+		AgentKey: strings.TrimSpace(os.Getenv(envCostroidAgentKey)),
+	}
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = defaultCostroidAPIURL
+	}
+	var missing []string
+	if cfg.OrgID == "" {
+		missing = append(missing, envCostroidOrgID)
+	}
+	if cfg.AgentKey == "" {
+		missing = append(missing, envCostroidAgentKey)
+	}
+	return cfg, missing
 }
 
 // bestSavingsTip returns a short one-liner for the largest cheaper-model
