@@ -1,6 +1,6 @@
 module github.com/costroid/costroid-sync
 
-go 1.22
+go 1.24
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
