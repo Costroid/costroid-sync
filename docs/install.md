@@ -3,7 +3,7 @@
 `costroid-sync` is distributed as:
 
 - prebuilt Linux binaries (`amd64`, `arm64`) attached to each GitHub release
-- a `go install` source path that works on any OS with Go 1.22+ and a C compiler
+- a `go install` source path that works on any OS with Go 1.24+ and a C compiler
 
 Native macOS and Windows binaries are **not** shipped yet. `costroid-sync` uses [`github.com/mattn/go-sqlite3`](https://github.com/mattn/go-sqlite3) for its local SQLite store, which requires CGO. The current release pipeline runs on a Linux runner and only produces Linux artifacts. macOS and Windows users build from source via `go install`.
 
@@ -70,7 +70,7 @@ go install github.com/costroid/costroid-sync@latest
 
 ### Prerequisites
 
-- Go 1.22 or later — <https://go.dev/dl/>
+- Go 1.24 or later — <https://go.dev/dl/>
 - Xcode Command Line Tools — needed for `cc` so CGO can build `go-sqlite3`
 
 ### Where the binary lands
@@ -107,7 +107,7 @@ The installer:
 
 ### Prerequisites
 
-- Go 1.22 or later — <https://go.dev/dl/>
+- Go 1.24 or later — <https://go.dev/dl/>
 - A C compiler: [MinGW-w64](https://www.mingw-w64.org/) or [msys2](https://www.msys2.org/). After install, make sure `gcc` is on your `PATH`.
 
 ### Pin a release
@@ -157,7 +157,7 @@ go build -o costroid-sync .
 ./costroid-sync version
 ```
 
-Requires Go 1.22+ and a working C compiler.
+Requires Go 1.24+ and a working C compiler.
 
 ## Manual release download (Linux)
 
@@ -191,7 +191,7 @@ You should see the release tag (e.g. `v0.2.0`).
 
 **`command not found: costroid-sync` after install succeeded.** The install directory isn't on your `PATH`. For Linux/macOS, add it in your shell rc file. For Windows, see the `setx`-equivalent snippet above.
 
-**`go: command not found`.** Install Go 1.22+ from <https://go.dev/dl/>, restart your shell, then re-run the installer.
+**`go: command not found`.** Install Go 1.24+ from <https://go.dev/dl/>, restart your shell, then re-run the installer.
 
 **`exec: "gcc": executable file not found in $PATH`** (or `cgo: C compiler "gcc" not found`). The build needs a C compiler for `go-sqlite3`. macOS: `xcode-select --install`. Linux: `sudo apt install build-essential` (Debian/Ubuntu) or equivalent. Windows: install MinGW-w64 or msys2 and confirm `gcc --version` works in a fresh shell.
 

@@ -59,7 +59,7 @@ go install github.com/costroid/costroid-sync@latest
 irm https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.ps1 | iex
 ```
 
-Builds from source via `go install`; requires Go 1.22+ and a C compiler (MinGW-w64 or msys2). No prebuilt Windows binary yet.
+Builds from source via `go install`; requires Go 1.24+ and a C compiler (MinGW-w64 or msys2). No prebuilt Windows binary yet.
 
 ### All platforms (Go fallback)
 

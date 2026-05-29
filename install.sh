@@ -128,7 +128,7 @@ if [ "$os" = darwin ]; then
   err "No prebuilt macOS binary yet (costroid-sync uses go-sqlite3, which requires CGO)."
   err "Install from source:"
   err "  1. Install Xcode Command Line Tools: xcode-select --install"
-  err "  2. Install Go 1.22+:                 https://go.dev/dl/"
+  err "  2. Install Go 1.24+:                 https://go.dev/dl/"
   err "  3. Run:                              $(go_install_cmd)"
   err "Details: $docs_url"
   exit 1
@@ -138,7 +138,7 @@ if [ "$os" = windows ]; then
   err "Run the PowerShell installer on Windows:"
   err "  irm https://raw.githubusercontent.com/$repo/main/install.ps1 | iex"
   err ""
-  err "Or, with Go 1.22+ and a C compiler (MinGW-w64) installed, from any shell:"
+  err "Or, with Go 1.24+ and a C compiler (MinGW-w64) installed, from any shell:"
   err "  $(go_install_cmd)"
   err ""
   err "Details: $docs_url"
@@ -147,7 +147,7 @@ fi
 
 if [ "$os" = unknown ]; then
   err "Unsupported OS: $(uname -s 2>/dev/null || printf unknown)"
-  err "Try installing from source with Go 1.22+ and a C compiler:"
+  err "Try installing from source with Go 1.24+ and a C compiler:"
   err "  $(go_install_cmd)"
   err "Details: $docs_url"
   exit 1

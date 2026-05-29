@@ -30,7 +30,7 @@ Write-Output "Building costroid-sync from source via 'go install' (no prebuilt W
 Write-Output ""
 
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
-    Write-Err "Go 1.22+ is required."
+    Write-Err "Go 1.24+ is required."
     Write-Err "Install Go from: https://go.dev/dl/"
     Write-Err "Then re-run this installer."
     Write-Err "Details: $DocsUrl"

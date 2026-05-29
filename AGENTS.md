@@ -82,7 +82,7 @@ func processOpenAIUsage(raw map[string]interface{}) NormalizedCostRecord {
 | Layer | Technology | Notes |
 |-------|-----------|-------|
 | **Runtime** | Node.js 20+ | LTS only — web dashboard |
-| **Runtime (CLI)** | Go 1.22+ | CLI sync agent — single binary, zero npm deps |
+| **Runtime (CLI)** | Go 1.24+ | CLI sync agent — single binary, zero npm deps |
 | **Framework** | Next.js 14+ (App Router) | `app/` directory only, NOT `pages/` |
 | **Language** | TypeScript (strict mode) | `"strict": true` in tsconfig |
 | **Styling** | Tailwind CSS 3+ | No custom CSS except globals.css |
