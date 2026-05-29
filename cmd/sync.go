@@ -70,6 +70,9 @@ func runSync(cmd *cobra.Command, args []string) error {
 	if err := storage.SaveRecords(ctx, db, records); err != nil {
 		return fmt.Errorf("save records: %w", err)
 	}
+	if err := storage.SaveLastSync(ctx, db, time.Now().UTC()); err != nil {
+		return fmt.Errorf("record sync time: %w", err)
+	}
 	maybePushCloud(cmd, records)
 
 	for _, note := range notes {

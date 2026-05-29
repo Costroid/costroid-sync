@@ -70,6 +70,10 @@ func InitDB(path string) (*sql.DB, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrate cost_records: %w", err)
 	}
+	if err := ensureSyncStateTable(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate sync_state: %w", err)
+	}
 	return db, nil
 }
 
