@@ -34,6 +34,34 @@ func Open(path string) (*sql.DB, error) {
 	return sql.Open("sqlite3", path)
 }
 
+// OpenReadOnly opens an existing SQLite database in read-only mode (mode=ro).
+// Unlike Open/InitDB it never creates the file and issues no schema or
+// migration writes. It is the access path for the T1.1 statusline, which must
+// be strictly read-only and must not create the database as a side effect.
+// Callers should confirm the file exists (the statusline does so via os.Stat)
+// before calling; mode=ro fails rather than creating a missing file.
+func OpenReadOnly(path string) (*sql.DB, error) {
+	return sql.Open("sqlite3", "file:"+path+"?mode=ro&_busy_timeout=2000")
+}
+
+const existsRecordSQL = `SELECT 1 FROM cost_records LIMIT 1`
+
+// HasAnyRecords reports whether cost_records holds at least one row. It is a
+// cheap existence check (LIMIT 1, no scan) used by the statusline to tell a
+// truly empty database apart from one that merely has no rows in the recent
+// read window.
+func HasAnyRecords(ctx context.Context, db *sql.DB) (bool, error) {
+	var one int
+	err := db.QueryRowContext(ctx, existsRecordSQL).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("check records exist: %w", err)
+	}
+	return true, nil
+}
+
 // DefaultDBPath returns ~/.costroid/costroid.db.
 func DefaultDBPath() (string, error) {
 	home, err := os.UserHomeDir()

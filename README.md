@@ -104,6 +104,7 @@ costroid-sync forecast
 | `anomalies` | List local daily spend spikes above the rolling baseline. | `costroid-sync anomalies` |
 | `budget` | Set or check a local spending budget. | `costroid-sync budget --set 500 --period monthly` |
 | `export` | Export local metadata records to stdout. | `costroid-sync export --format csv > costs.csv` |
+| `statusline` | Print a one-line local cost summary for tmux/Byobu/shell status bars. | `costroid-sync statusline --format tmux` |
 | `version` | Print the CLI version. | `costroid-sync version` |
 
 Supported `sync --provider` values: `openai`, `anthropic`, `github-copilot` (alias `copilot`), `google-gemini` (alias `gemini`), `gcp-billing` (alias `gcp`), `azure-openai`, `aws-bedrock` (alias `bedrock`), `all`. Defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
@@ -123,6 +124,43 @@ Costroid reads only provider billing and usage metadata. Provider secrets stay i
 | GCP Billing | `gcp-billing`, `gcp` | BigQuery Cloud Billing detailed export via REST | `GCP_SERVICE_ACCOUNT_JSON`, `GCP_BILLING_PROJECT`, `GCP_BILLING_TABLE` | [docs/providers/gcp-billing.md](docs/providers/gcp-billing.md) |
 
 Provider docs index: [docs/providers/README.md](docs/providers/README.md)
+
+## Statusline
+
+`costroid-sync statusline` prints a single deterministic line summarising your local cost
+metadata, for tmux/Byobu/shell status bars:
+
+```text
+⣿ costroid  MTD $38.00  forecast $99.39  budget 60%  anomalies 1  last sync 4h
+```
+
+It reads the local SQLite database **read-only** and makes **no** network request, provider API
+call, or provider sync — run `costroid-sync sync` separately on your own schedule. It always
+prints one line and exits `0`; when there is no local data yet it prints
+`costroid  no local data  run costroid-sync sync`.
+
+```sh
+costroid-sync statusline --format plain   # default; one line, ⣿ glyph when the locale is UTF-8
+costroid-sync statusline --format tmux    # adds tmux #[fg=...] style codes
+costroid-sync statusline --format byobu   # adds ANSI color for a Byobu status script
+costroid-sync statusline --format json    # stable machine-readable object for scripts
+costroid-sync statusline --plain          # force ASCII glyph + no color, regardless of --format
+```
+
+`--plain` and a non-empty `NO_COLOR` both suppress color. tmux and Byobu own the polling cadence —
+there is no watch process or daemon:
+
+```tmux
+# tmux: ~/.tmux.conf
+set -g status-interval 60
+set -g status-right "#(costroid-sync statusline --format tmux) %H:%M"
+```
+
+```bash
+# Byobu: ~/.byobu/bin/60_costroid  (the numeric prefix sets the interval)
+#!/usr/bin/env bash
+costroid-sync statusline --format byobu
+```
 
 ## Local Storage
 
