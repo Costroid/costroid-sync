@@ -124,6 +124,8 @@ func processOpenAIUsage(raw map[string]interface{}) NormalizedCostRecord {
 
 **Do NOT add** Go DI frameworks, Go ORMs (GORM, ent), or Go web frameworks (gin, echo). Use standard library + these 3 packages.
 
+**T1 dependency rule:** T1.1 statusline MVP must use the existing dependency set; it should be deterministic stdout over local SQLite and require no Bubble Tea dependency. Bubble Tea/Bubbles are not approved today. They may be added only for explicitly approved T1.2/T1.3 fullscreen TUI or TUI sync work, and only after an ADR/dependency review in `DECISIONS.md` per `MAINTAINABILITY.md`.
+
 ---
 
 ## Project Structure
@@ -175,7 +177,7 @@ costroid-cloud/
 │   │   ├── transparency/page.tsx  # /dashboard/transparency ("What We Collected")
 │   │   ├── upload/page.tsx        # /dashboard/upload (CSV upload)
 │   │   ├── audit-log/page.tsx     # /dashboard/audit-log (Team+)
-│   │   └── settings/page.tsx      # /dashboard/settings (agent_key display)
+│   │   └── settings/page.tsx      # /dashboard/settings (agent key display)
 │   │
 │   └── api/
 │       ├── marketplace/azure/
@@ -184,7 +186,7 @@ costroid-cloud/
 │       ├── webhooks/
 │       │   ├── azure-marketplace/route.ts  # Azure SaaS lifecycle events
 │       │   └── aws-marketplace/route.ts
-│       ├── ingest/route.ts        # SDK metadata ingestion
+│       ├── ingest/route.ts        # SDK metadata ingestion (post-launch backlog)
 │       ├── orgs/[orgId]/
 │       │   ├── costs/route.ts
 │       │   ├── providers/route.ts
@@ -245,7 +247,10 @@ costroid-cloud/
 │
 ├── supabase/
 │   └── migrations/
-│       └── 001_initial_schema.sql # Full SQL from spec.md Section 4
+│       ├── 001_initial_schema.sql # W1 core schema from W0 R2/spec.md
+│       ├── 002_seed_model_pricing.sql
+│       ├── 003_team_features.sql  # W4
+│       └── 004_marketplace.sql    # W6
 │
 └── tests/
     ├── lib/providers/
@@ -254,7 +259,7 @@ costroid-cloud/
     ├── lib/forecasting/
     │   └── anomaly-detector.test.ts
     └── api/
-        ├── agent-sync.test.ts     # Must test agent_key auth + prompt content rejection
+        ├── agent-sync.test.ts     # Must test Bearer agent key auth + prompt content rejection
         ├── upload.test.ts         # Must test CSV prompt column rejection
         └── ingest.test.ts         # Must test prompt content rejection
 ```
@@ -268,7 +273,7 @@ costroid-sync/
 ├── main.go                        # CLI entry point
 ├── cmd/
 │   ├── root.go                    # Root command (cobra)
-│   ├── sync.go                    # Sync command (--provider, --days, --push)
+│   ├── sync.go                    # Sync command (--provider, --days; --push after C11)
 │   ├── history.go                 # View local history (--last 30d)
 │   ├── trend.go                   # Show trends (--weekly, --monthly)
 │   ├── forecast.go                # Predict month-end spend
@@ -285,7 +290,7 @@ costroid-sync/
 │   ├── github_copilot.go          # GET /organizations/ORG/settings/billing/... (Phase 2)
 │   ├── azure_openai.go            # Azure Cost Management API (Phase 2)
 │   ├── aws_bedrock.go             # AWS Cost Explorer API (Phase 2)
-│   └── gcp_vertex.go              # GCP Cloud Billing API (Phase 2)
+│   └── gcp_billing.go             # GCP Billing export API (Phase 2)
 ├── storage/
 │   └── sqlite.go                  # Local SQLite at ~/.costroid/costroid.db
 ├── analysis/
@@ -298,10 +303,10 @@ costroid-sync/
 │   ├── json.go                    # JSON output
 │   └── csv.go                     # CSV + FOCUS export
 ├── client/
-│   └── cloud.go                   # Optional POST to costroid.com (--push flag)
+│   └── cloud.go                   # Optional POST to costroid.com (created in C11)
 ├── .env.example                   # All supported env vars
 ├── Makefile                       # build, test, release targets
-├── .goreleaser.yaml               # Cross-platform binary releases
+├── .goreleaser.yaml               # Release artifacts; cross-platform claims require validation
 ├── LICENSE                        # MIT
 ├── README.md                      # Setup instructions, demo GIF
 └── .github/
@@ -311,10 +316,10 @@ costroid-sync/
 ```
 
 **Why Go for the CLI:**
-- **Zero runtime dependencies** — single static binary, no npm/pip/node required
+- **Zero language-runtime dependencies** — single Go binary, no npm/pip/node required; validate OS-level dynamic linking per release artifact
 - **No supply chain risk at runtime** — nothing downloaded when user runs it
 - **API keys stay in the Go binary's process memory** — never exposed to npm dependency tree
-- **Cross-platform** — one `go build` produces Linux/Mac/Windows binaries
+- **Cross-platform goal** — Linux/macOS/Windows release artifacts must be validated before they are claimed, especially because CGO/go-sqlite3 can affect builds
 - **Users can audit the source** — `go build` is reproducible
 
 ---
@@ -328,31 +333,56 @@ For CLI agent work: read the `costroid-sync/README.md` as well.
 ### Rule 2: Work in Priority Order
 
 ```
-BUILD ORDER: CLI first (Go), then Cloud (TypeScript). See PROMPTS.md for full details.
+CURRENT ROADMAP: CLI is provider-complete, R3 is complete, W0 is approved in `W0-cloud-architecture.md`, and W1-W4 plus C11 are complete. Public launch is intentionally deferred until W5, W6, and the approved D1/T1 pre-launch design gates are complete. See PROMPTS.md for full details.
 
-─────────── PHASE 1: CLI (Go repo — costroid-sync) ───────────
-C1: Go project setup (cobra CLI, SQLite storage, project structure)
-C2: OpenAI provider (first provider — prove the pipeline)
+Completed:
+C1: Go project setup
+C2: OpenAI provider
 C3: Anthropic provider
-C4: Savings recommendations (local analysis)
-C5: History, trends, forecasting, anomaly detection (all local)
-C6: Budget tracking + multi-format export (CSV/JSON/FOCUS)
+C4: Savings recommendations
+C5: History, trends, forecasting, anomaly detection
+C6: Budget tracking + multi-format export
 C7: README, GoReleaser, install script, CI/CD
-C8: Launch on GitHub + HN + Reddit + Product Hunt
-─────────── CLI SHIPPED — users from day 15 ───────────
-
-─────────── PHASE 2: COMMUNITY (Go repo — adding providers) ───────────
-C9: GitHub Copilot provider (June 1 demand)
-C10: Azure, AWS, GCP providers
-C11: Cloud push (--push flag to costroid.com)
-
-─────────── PHASE 3: CLOUD DASHBOARD (Next.js repo — costroid-cloud) ───────────
-W1: Next.js project scaffolding (Supabase + Tailwind + shadcn + pnpm hardened)
-W2: Auth + agent-sync endpoint + CSV upload
+v0.1.0 release
+R2 / v0.2.0 validation, tag, push, and install smoke
+C9.1: GitHub Copilot provider
+C9.2: Google Gemini CSV billing provider
+C10.1: Azure OpenAI provider
+C10.2: AWS Bedrock provider
+C10.3: GCP Billing provider
+Provider docs extraction
+R3: Cross-platform install experience
+W0: Cloud architecture checkpoint accepted in W0-cloud-architecture.md
+W1: Next.js project scaffolding
+W2: Auth + orgs + agent-sync endpoint + CSV upload
+C11: CLI cloud push to the real W2 ingestion endpoint
 W3: Dashboard + charts + transparency view
-W4: Team features (Slack/email/Teams notifications, attribution, audit log)
-W5: Azure Marketplace integration + landing page + docs
-─────────── CLOUD SHIPPED — revenue from week 10+ ───────────
+W4: Team features and alerts
+
+Active sequence:
+W5: Landing page, pricing page, and cloud docs
+W6: Azure Marketplace SaaS integration
+D1/T1: Founder-approved pre-C8 design and terminal experience gates after W6
+C8: Public launch on GitHub/HN/Reddit/Product Hunt when R3/W0, W1-W6/C11, and approved D1/T1 pre-launch gates are complete
+L1: Post-launch feedback triage
+
+W0 R2 cloud contract:
+- Agent-sync auth uses `Authorization: Bearer csk_...`, not in-body `agent_key`.
+- Agent-sync includes `X-Costroid-Wire-Version: 1` and body `{ "records": [...] }`.
+- `cost_records` deduplicates per org with `(org_id, source_hash)`.
+- Ingest routes find-or-create `connected_providers` by `(org_id, provider_type, sync_method)`.
+- W1 core migrations are only orgs, members, agent keys, connected providers, cost records, audit log, and model pricing. W4 adds team/alert analytics tables; W6 adds marketplace tables.
+- `/api/ingest` SDK endpoint is post-launch backlog, not W2.
+
+Post-launch backlog and launch gates:
+M3: Recommendation Intelligence Platform — source-agnostic, metadata-only model alternatives to evaluate.
+Allowed inputs: provider/model/SKU metadata, token counts, usage quantities, cost, timestamps, safe team/project/account IDs, catalog data, pricing sources, benchmark/eval sources, context windows, capability tags, speed/latency, source URLs, source freshness dates, confidence scores, and recommendation evidence.
+Forbidden inputs: prompts, completions, messages, content, request/response bodies, raw provider payloads, traces, logs, source code, repository contents, free-form user text, or free-form labels/system labels.
+It must not become model routing, proxying, automatic switching, or LLM observability.
+
+T1: Terminal Experience Layer — founder-approved pre-C8 design/statusline gate after W6 for D1/T1.0/T1.1. T1.2/T1.3 remain conditional and require explicit founder approval plus ADR/dependency review.
+T1.1 first implementation is statusline MVP: `costroid-sync statusline --format plain|tmux|byobu|json`, local SQLite only, deterministic one-line stdout, no provider API/network calls, no provider sync on redraw, no new Go dependency.
+T1 must not become default CLI behavior, raw-terminal overlay, tmux replacement, child-PTY wrapper, model gateway, proxy, tracing, or LLM observability. Bubble Tea/Bubbles are future-only for explicitly approved T1.2/T1.3 work with ADR/dependency approval.
 ```
 
 ### Rule 3: One Feature Per Session

@@ -15,3 +15,5 @@ OPERATIONS.md
 *.db-journal
 coverage.out
 *.test
+
+MarkdownDocs/
