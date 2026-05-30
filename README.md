@@ -105,6 +105,7 @@ costroid-sync forecast
 | `budget` | Set or check a local spending budget. | `costroid-sync budget --set 500 --period monthly` |
 | `export` | Export local metadata records to stdout. | `costroid-sync export --format csv > costs.csv` |
 | `statusline` | Print a one-line local cost summary for tmux/Byobu/shell status bars. | `costroid-sync statusline --format tmux` |
+| `tui` | Open an interactive fullscreen dashboard of local cost metadata. | `costroid-sync tui` |
 | `version` | Print the CLI version. | `costroid-sync version` |
 
 Supported `sync --provider` values: `openai`, `anthropic`, `github-copilot` (alias `copilot`), `google-gemini` (alias `gemini`), `gcp-billing` (alias `gcp`), `azure-openai`, `aws-bedrock` (alias `bedrock`), `all`. Defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
@@ -161,6 +162,39 @@ set -g status-right "#(costroid-sync statusline --format tmux) %H:%M"
 #!/usr/bin/env bash
 costroid-sync statusline --format byobu
 ```
+
+## TUI
+
+`costroid-sync tui` opens an opt-in, keyboard-first fullscreen dashboard (alternate screen) of
+your local cost metadata, with panels for Overview, Providers, Models, Budget, Forecast,
+Anomalies, Recent Syncs, and Export hints:
+
+```text
+⣿ costroid  AI cost dashboard  ·  last 45 days · local SQLite
+1 Overview 2 Providers 3 Models 4 Budget 5 Forecast 6 Anomalies 7 Syncs 8 Export
+
+Overview
+  Month to date   $38.00
+  Forecast        $99.39
+  Budget          60% (monthly)
+  Anomalies       1
+  Last sync       4h ago
+```
+
+Like `statusline`, it reads the local SQLite database **read-only** and makes **no** network
+request, provider API call, or provider sync — run `costroid-sync sync` separately. It changes no
+other command's output.
+
+```sh
+costroid-sync tui                  # open the dashboard
+costroid-sync tui --plain          # ASCII-only glyphs, no color
+```
+
+Navigation: `Tab`/`Shift-Tab` or `1`–`8` switch panels, `j`/`k` (or arrows) scroll, `g`/`G` jump to
+top/bottom, `?` toggles help, and `q` (or `Ctrl-C`) quits — the terminal is always restored on
+exit. `NO_COLOR` and `--plain` suppress color. In a pipe or non-interactive terminal (or
+`TERM=dumb`) it refuses cleanly instead of painting an alternate screen into a pipe; use
+`statusline` or `history` for scriptable output.
 
 ## Local Storage
 

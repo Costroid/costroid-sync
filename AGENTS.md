@@ -120,11 +120,14 @@ func processOpenAIUsage(raw map[string]interface{}) NormalizedCostRecord {
 | `github.com/spf13/cobra` | CLI framework (commands, flags, help) |
 | `github.com/mattn/go-sqlite3` | Local SQLite storage (~/.costroid/costroid.db) |
 | `github.com/charmbracelet/lipgloss` | Terminal table styling and colors |
+| `github.com/charmbracelet/bubbletea` | Opt-in fullscreen TUI event loop (T1.2; pinned `v1.3.10`, approved in `DECISIONS.md` ADR-011) |
+| `github.com/charmbracelet/bubbles` | Scoped read-only TUI components — `table`/`viewport`/`help`/`key`/`paginator` only (T1.2; pinned `v0.21.0`, ADR-011) |
+| `github.com/mattn/go-isatty` | TTY detection for the TUI's non-interactive refusal (already in the module graph) |
 | Standard library only for: | `net/http` (API calls), `encoding/json`, `fmt`, `os`, `context`, `crypto/sha256` |
 
-**Do NOT add** Go DI frameworks, Go ORMs (GORM, ent), or Go web frameworks (gin, echo). Use standard library + these 3 packages.
+**Do NOT add** Go DI frameworks, Go ORMs (GORM, ent), or Go web frameworks (gin, echo). Use standard library + the packages above.
 
-**T1 dependency rule:** T1.1 statusline MVP must use the existing dependency set; it should be deterministic stdout over local SQLite and require no Bubble Tea dependency. Bubble Tea/Bubbles are not approved today. They may be added only for explicitly approved T1.2/T1.3 fullscreen TUI or TUI sync work, and only after an ADR/dependency review in `DECISIONS.md` per `MAINTAINABILITY.md`.
+**T1 dependency rule:** T1.1 statusline MVP must use the existing dependency set; it should be deterministic stdout over local SQLite and require no Bubble Tea dependency. Bubble Tea/Bubbles were not approved for T1.1. They are approved **only** for the gated TUI work via `DECISIONS.md` ADR-011 (T1.2 fullscreen + pre-approved T1.3 sync TUI): `bubbletea v1.3.10` and a **scoped** `bubbles v0.21.0` (read-only components only — `textinput`/`textarea`/`filepicker`/`list` are forbidden; `spinner`/`progress` are T1.3-only). Any further Go dependency still requires a new ADR/dependency review per `MAINTAINABILITY.md`.
 
 ---
 
@@ -281,6 +284,8 @@ costroid-sync/
 │   ├── savings.go                 # Show savings recommendations
 │   ├── budget.go                  # Set/check budget (--set, --period)
 │   ├── export.go                  # Export (--format csv|json|focus|markdown)
+│   ├── statusline.go              # One-line status output (T1.1)
+│   ├── tui.go                     # Opt-in fullscreen dashboard command (T1.2)
 │   └── version.go                 # Print version
 ├── providers/
 │   ├── types.go                   # NormalizedCostRecord struct
@@ -302,6 +307,14 @@ costroid-sync/
 │   ├── table.go                   # Terminal table formatting (lipgloss)
 │   ├── json.go                    # JSON output
 │   └── csv.go                     # CSV + FOCUS export
+├── tui/                           # Opt-in fullscreen TUI (T1.2; Bubble Tea, ADR-011)
+│   ├── app.go                     # Root model: Update/View, keys, resize, Run
+│   ├── data.go                    # Read-only local-SQLite loaders → Dashboard
+│   ├── styles.go                  # lipgloss palette (color/ASCII gated)
+│   ├── view.go                    # Layout: full / compact / too-small / status
+│   ├── keys.go                    # Keyboard map (bubbles/key + help)
+│   ├── render.go                  # Money/age/table render helpers
+│   └── <panel>.go                 # Overview/Providers/Models/Budget/Forecast/Anomalies/Syncs/Export
 ├── client/
 │   └── cloud.go                   # Optional POST to costroid.com (created in C11)
 ├── .env.example                   # All supported env vars
