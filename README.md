@@ -110,6 +110,8 @@ costroid-sync forecast
 
 Supported `sync --provider` values: `openai`, `anthropic`, `github-copilot` (alias `copilot`), `google-gemini` (alias `gemini`), `gcp-billing` (alias `gcp`), `azure-openai`, `aws-bedrock` (alias `bedrock`), `all`. Defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
 
+`sync --tui` is an opt-in animated progress view of the real sync stages (fetch → write → analyze) for interactive terminals. It does the same work as a normal sync and prints the same summary at the end. In a pipe, in CI, under `TERM=dumb`, or with `--no-animation`, it falls back to the plain deterministic `sync` output.
+
 ## Provider Setup
 
 Costroid reads only provider billing and usage metadata. Provider secrets stay in your shell and process.
