@@ -120,8 +120,8 @@ func processOpenAIUsage(raw map[string]interface{}) NormalizedCostRecord {
 | `github.com/spf13/cobra` | CLI framework (commands, flags, help) |
 | `github.com/mattn/go-sqlite3` | Local SQLite storage (~/.costroid/costroid.db) |
 | `github.com/charmbracelet/lipgloss` | Terminal table styling and colors |
-| `github.com/charmbracelet/bubbletea` | Opt-in fullscreen TUI event loop (T1.2; pinned `v1.3.10`, approved in `DECISIONS.md` ADR-011) |
-| `github.com/charmbracelet/bubbles` | Scoped read-only TUI components — `table`/`viewport`/`help`/`key`/`paginator` only (T1.2; pinned `v0.21.0`, ADR-011) |
+| `github.com/charmbracelet/bubbletea` | Opt-in TUI event loop — fullscreen `tui` (T1.2) and `sync --tui` (T1.3); pinned `v1.3.10`, approved in `DECISIONS.md` ADR-011 |
+| `github.com/charmbracelet/bubbles` | Scoped TUI components — read-only `table`/`viewport`/`help`/`key`/`paginator` (T1.2) plus `spinner` for real sync stages (T1.3); pinned `v0.21.0`, ADR-011/ADR-013 |
 | `github.com/mattn/go-isatty` | TTY detection for the TUI's non-interactive refusal (already in the module graph) |
 | Standard library only for: | `net/http` (API calls), `encoding/json`, `fmt`, `os`, `context`, `crypto/sha256` |
 
@@ -393,9 +393,18 @@ Allowed inputs: provider/model/SKU metadata, token counts, usage quantities, cos
 Forbidden inputs: prompts, completions, messages, content, request/response bodies, raw provider payloads, traces, logs, source code, repository contents, free-form user text, or free-form labels/system labels.
 It must not become model routing, proxying, automatic switching, or LLM observability.
 
-T1: Terminal Experience Layer — founder-approved pre-C8 design/statusline gate after W6 for D1/T1.0/T1.1. T1.2/T1.3 remain conditional and require explicit founder approval plus ADR/dependency review.
+T1: Terminal Experience Layer — founder-approved pre-C8 design/statusline gate after W6 for D1/T1.0/T1.1. T1.2 (`tui`) and T1.3 (`sync --tui`) are founder-approved and implemented.
+
+T1.3 Sync TUI — APPROVED & IMPLEMENTED (2026-05-30). This is the durable, canonical approval/scope/constraints record for T1.3; it lives here in AGENTS.md (the local MarkdownDocs/DECISIONS.md ADR-013 is non-tracked supporting detail only). The founder explicitly approved T1.3 implementation on 2026-05-30, after T1.2 was complete.
+- Scope: opt-in `costroid-sync sync --tui` only. It is never default CLI behavior; plain `costroid-sync sync` output is unchanged (no default sync output changes).
+- The sync TUI may call provider APIs ONLY because the user explicitly invoked `sync`. No provider polling outside that explicit user-invoked sync; no watch process, daemon, timer, socket, or background refresh.
+- No terminal wrapper, no child PTY, no tmux/multiplexer replacement, no raw-terminal overlay.
+- Metadata-only: no prompt/completion/message/content/request-body/response-body/raw-provider-payload/trace/log/source-code/repository-content handling. No provider-credential display. No raw provider payload display.
+- No fake scanning/thinking and no animated money. Progress/animation may only reflect real sync task state. Non-TTY, CI, `TERM=dumb`, and `--no-animation` fall back to the deterministic `sync` output.
+- Dependency scope stays within the previously approved T1.2 dependency decision (ADR-011): `bubbletea v1.3.10` + scoped `bubbles v0.21.0` only; adding `bubbles/spinner` for T1.3 real-stage progress introduced no new module. Any further T1 work or Go dependency requires a new ADR/dependency review.
+
 T1.1 first implementation is statusline MVP: `costroid-sync statusline --format plain|tmux|byobu|json`, local SQLite only, deterministic one-line stdout, no provider API/network calls, no provider sync on redraw, no new Go dependency.
-T1 must not become default CLI behavior, raw-terminal overlay, tmux replacement, child-PTY wrapper, model gateway, proxy, tracing, or LLM observability. Bubble Tea/Bubbles are future-only for explicitly approved T1.2/T1.3 work with ADR/dependency approval.
+T1 must not become default CLI behavior, raw-terminal overlay, tmux replacement, child-PTY wrapper, model gateway, proxy, tracing, or LLM observability. Bubble Tea/Bubbles are limited to the approved, implemented T1.2 (`tui`) and T1.3 (`sync --tui`) work; any further Go dependency requires a new ADR/dependency review.
 ```
 
 ### Rule 3: One Feature Per Session

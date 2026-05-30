@@ -25,10 +25,17 @@ const (
 )
 
 var (
-	syncProvider string
-	syncDays     int
-	syncPush     bool
+	syncProvider    string
+	syncDays        int
+	syncPush        bool
+	syncTUI         bool
+	syncNoAnimation bool
 )
+
+// noProviderCredsHelp is the friendly error returned when `--provider all` finds
+// no configured credentials. Shared by the normal and --tui sync paths so both
+// emit identical text.
+const noProviderCredsHelp = "no provider credentials configured; export at least one of OPENAI_ADMIN_KEY, ANTHROPIC_ADMIN_KEY, GITHUB_PAT + GITHUB_ORG, GEMINI_BILLING_EXPORT, GCP_SERVICE_ACCOUNT_JSON + GCP_BILLING_PROJECT + GCP_BILLING_TABLE, AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET + AZURE_SUBSCRIPTION_ID, or AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY"
 
 var syncCmd = &cobra.Command{
 	Use:   "sync",
@@ -40,10 +47,19 @@ func init() {
 	syncCmd.Flags().StringVar(&syncProvider, "provider", "openai", "provider to sync (openai, anthropic, github-copilot (alias: copilot), google-gemini (alias: gemini), gcp-billing (alias: gcp), azure-openai, aws-bedrock (alias: bedrock), all)")
 	syncCmd.Flags().IntVar(&syncDays, "days", 30, "lookback window in days")
 	syncCmd.Flags().BoolVar(&syncPush, "push", false, "push synced metadata records to Costroid Cloud")
+	syncCmd.Flags().BoolVar(&syncTUI, "tui", false, "show an opt-in animated progress view of real sync stages (interactive terminal only; falls back to plain output in pipes/CI)")
+	syncCmd.Flags().BoolVar(&syncNoAnimation, "no-animation", false, "disable the --tui animation and use plain deterministic sync output")
 	rootCmd.AddCommand(syncCmd)
 }
 
 func runSync(cmd *cobra.Command, args []string) error {
+	// Opt-in animated progress view: only in an interactive terminal and only
+	// when --no-animation is not set. Pipes, CI, TERM=dumb, and --no-animation
+	// all fall through to the unchanged deterministic path below (T1TUI §17).
+	if syncTUI && syncTUIAllowed() {
+		return runSyncTUI(cmd)
+	}
+
 	regs, err := selectedRegistrations(syncProvider)
 	if err != nil {
 		return err
@@ -193,7 +209,7 @@ func fetchSelectedProviders(ctx context.Context, regs []providers.Registration, 
 		records = append(records, fetched...)
 	}
 	if skipMissing && configured == 0 {
-		return nil, nil, errors.New("no provider credentials configured; export at least one of OPENAI_ADMIN_KEY, ANTHROPIC_ADMIN_KEY, GITHUB_PAT + GITHUB_ORG, GEMINI_BILLING_EXPORT, GCP_SERVICE_ACCOUNT_JSON + GCP_BILLING_PROJECT + GCP_BILLING_TABLE, AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET + AZURE_SUBSCRIPTION_ID, or AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY")
+		return nil, nil, errors.New(noProviderCredsHelp)
 	}
 	return records, notes, nil
 }
