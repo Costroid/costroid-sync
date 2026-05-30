@@ -15,8 +15,8 @@ import (
 // keeps the opt-in dashboard strictly read-only over local SQLite.
 func TestImportGraph_NoForbiddenImports(t *testing.T) {
 	forbidden := []string{
-		"github.com/costroid/costroid-sync/providers",
-		"github.com/costroid/costroid-sync/client",
+		"github.com/costroid/costroid/providers",
+		"github.com/costroid/costroid/client",
 		"net/http",
 		"net",
 		"os/exec",

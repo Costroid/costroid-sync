@@ -12,12 +12,12 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/analysis"
-	"github.com/costroid/costroid-sync/client"
-	"github.com/costroid/costroid-sync/output"
-	"github.com/costroid/costroid-sync/providers"
-	"github.com/costroid/costroid-sync/storage"
-	"github.com/costroid/costroid-sync/tui"
+	"github.com/costroid/costroid/analysis"
+	"github.com/costroid/costroid/client"
+	"github.com/costroid/costroid/output"
+	"github.com/costroid/costroid/providers"
+	"github.com/costroid/costroid/storage"
+	"github.com/costroid/costroid/tui"
 )
 
 // syncTUIAllowed reports whether the animated --tui path may run: it requires an
@@ -74,7 +74,7 @@ func runSyncTUI(cmd *cobra.Command) error {
 		return fmt.Errorf("sync view failed to start: %w", err)
 	}
 	if !completed {
-		return errors.New("sync did not complete; run `costroid-sync sync` for details")
+		return errors.New("sync did not complete; run `costroid sync` for details")
 	}
 	return writeSyncTUISummary(cmd, acc)
 }

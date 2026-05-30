@@ -113,3 +113,9 @@ func padRight(str string, n int) string {
 func labeled(s Styles, label string, width int, value string) string {
 	return s.Faint.Render(padRight(label, width)) + "  " + value
 }
+
+// pct renders a fraction as a rounded integer percent ("56%"). It is a share
+// label only — never money — so it composes beside a meter.
+func pct(frac float64) string {
+	return strconv.Itoa(int(frac*100+0.5)) + "%"
+}

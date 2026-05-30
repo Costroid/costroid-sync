@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# costroid-sync PowerShell installer.
+# costroid PowerShell installer.
 # Builds from source via 'go install' - no prebuilt Windows binary yet.
 
 [CmdletBinding()]
@@ -9,8 +9,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ModulePath = "github.com/costroid/costroid-sync"
-$Repo = "Costroid/costroid-sync"
+$ModulePath = "github.com/costroid/costroid"
+$Repo = "Costroid/costroid"
 $DocsUrl = "https://github.com/$Repo/blob/main/docs/install.md"
 
 if ([string]::IsNullOrEmpty($Version)) {
@@ -26,7 +26,7 @@ function Write-Err {
     [Console]::Error.WriteLine($Message)
 }
 
-Write-Output "Building costroid-sync from source via 'go install' (no prebuilt Windows binary yet)."
+Write-Output "Building costroid from source via 'go install' (no prebuilt Windows binary yet)."
 Write-Output ""
 
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
@@ -74,7 +74,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $gopath = (& go env GOPATH).Trim()
 $binDir = Join-Path $gopath "bin"
-$installedBin = Join-Path $binDir "costroid-sync.exe"
+$installedBin = Join-Path $binDir "costroid.exe"
 
 Write-Output ""
 Write-Output "Installed: $installedBin"
@@ -95,8 +95,8 @@ if (-not $onPath) {
     Write-Output ""
     Write-Output "  [Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'User') + ';$binDir', 'User')"
     Write-Output ""
-    Write-Output "Then open a new PowerShell session and run: costroid-sync version"
+    Write-Output "Then open a new PowerShell session and run: costroid version"
 } else {
     Write-Output ""
-    Write-Output "Run: costroid-sync version"
+    Write-Output "Run: costroid version"
 }

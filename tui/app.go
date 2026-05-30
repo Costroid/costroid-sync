@@ -72,11 +72,23 @@ func newModel(d Dashboard, opts Options) model {
 	return model{
 		data:   d,
 		styles: newStyles(opts.Color, opts.ASCII),
-		keys:   newKeyMap(),
-		help:   help.New(),
+		keys:   newKeyMap(opts.ASCII),
+		help:   newHelp(opts.ASCII),
 		vp:     viewport.New(0, 0),
 		panels: panelRegistry(),
 	}
+}
+
+// newHelp builds the help-footer component, forcing ASCII separators under
+// --plain so the footer carries no non-ASCII glyph (bubbles/help defaults to a
+// "•" bullet and a "…" ellipsis). UTF-8 mode keeps the library defaults.
+func newHelp(ascii bool) help.Model {
+	h := help.New()
+	if ascii {
+		h.ShortSeparator = " | "
+		h.Ellipsis = "..."
+	}
+	return h
 }
 
 func (m model) Init() tea.Cmd { return nil }

@@ -8,8 +8,8 @@ OPERATIONS.md
 /audits/
 
 # Go
-/costroid-sync
-/costroid-sync.exe
+/costroid
+/costroid.exe
 /dist/
 *.db
 *.db-journal

@@ -15,4 +15,4 @@ race:
 check: fmt vet test race
 
 build:
-	go build -o costroid-sync .
+	go build -o costroid .

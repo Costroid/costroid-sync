@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/providers"
-	"github.com/costroid/costroid-sync/storage"
+	"github.com/costroid/costroid/providers"
+	"github.com/costroid/costroid/storage"
 )
 
 func readLocalRecords(cmd *cobra.Command, since time.Time) ([]providers.NormalizedCostRecord, error) {

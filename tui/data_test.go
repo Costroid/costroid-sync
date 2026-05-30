@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/costroid/costroid-sync/providers"
-	"github.com/costroid/costroid-sync/storage"
+	"github.com/costroid/costroid/providers"
+	"github.com/costroid/costroid/storage"
 )
 
 func rec(provider, model string, cost float64, tokens int, ts time.Time) providers.NormalizedCostRecord {

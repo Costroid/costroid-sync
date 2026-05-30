@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 var ErrInsufficientData = errors.New("insufficient data")

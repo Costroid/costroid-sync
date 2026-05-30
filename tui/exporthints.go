@@ -7,10 +7,10 @@ import (
 
 // exportCommands lists the local, offline export formats the CLI supports.
 var exportCommands = []string{
-	"costroid-sync export --format csv",
-	"costroid-sync export --format json",
-	"costroid-sync export --format focus",
-	"costroid-sync export --format markdown",
+	"costroid export --format csv",
+	"costroid export --format json",
+	"costroid export --format focus",
+	"costroid export --format markdown",
 }
 
 // exportHintsBody renders offline savings recommendations (cheaper-model swaps,
@@ -21,7 +21,7 @@ func exportHintsBody(d Dashboard, s Styles, _ int) string {
 	b.WriteString(s.Title.Render("Export local metadata"))
 	b.WriteByte('\n')
 	for _, c := range exportCommands {
-		b.WriteString("  " + c + "\n")
+		b.WriteString("  " + s.Faint.Render(s.navDot(false)) + " " + c + "\n")
 	}
 
 	b.WriteByte('\n')
@@ -41,7 +41,7 @@ func exportHintsBody(d Dashboard, s Styles, _ int) string {
 		}
 	}
 	b.WriteString(table(s, cols, rows))
-	b.WriteString("\n" + s.Faint.Render("Estimates use token counts × seeded pricing; "+
+	b.WriteString("\n" + s.Faint.Render("Estimates use token counts "+s.times()+" seeded pricing; "+
 		"they ignore quality, latency, and capability differences."))
 	return b.String()
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/costroid/costroid-sync/analysis"
+	"github.com/costroid/costroid/analysis"
 )
 
 // Statusline status states. JSON `status` is a compatibility contract.
@@ -60,7 +60,7 @@ func (v StatuslineView) line() string {
 	case StatusUnavailable:
 		return plainPrefix + tokenSep + "unavailable"
 	default: // empty, missing_db
-		return plainPrefix + tokenSep + "no local data" + tokenSep + "run costroid-sync sync"
+		return plainPrefix + tokenSep + "no local data" + tokenSep + "run costroid sync"
 	}
 }
 

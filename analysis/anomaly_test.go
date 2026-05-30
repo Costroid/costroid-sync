@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 func TestDetectAnomalies_FindsSpike(t *testing.T) {

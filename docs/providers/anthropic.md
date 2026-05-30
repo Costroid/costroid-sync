@@ -23,13 +23,13 @@ None.
 ## Minimal Setup Steps
 
 1. Create an Anthropic Admin API key in the Claude Console.
-2. Export `ANTHROPIC_ADMIN_KEY` in the shell where you run `costroid-sync`.
+2. Export `ANTHROPIC_ADMIN_KEY` in the shell where you run `costroid`.
 3. Run a sync for the desired lookback window.
 
 ## Example Sync Command
 
 ```sh
-costroid-sync sync --provider anthropic --days 7
+costroid sync --provider anthropic --days 7
 ```
 
 ## Permission Notes

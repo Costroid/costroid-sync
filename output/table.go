@@ -8,8 +8,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/costroid/costroid-sync/analysis"
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/analysis"
+	"github.com/costroid/costroid/providers"
 )
 
 // HeaderStyle is the lipgloss style used for table column headers.

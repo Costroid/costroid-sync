@@ -40,13 +40,13 @@ export AWS_COST_EXPLORER_REGION=us-east-1
 ## Example Sync Command
 
 ```sh
-costroid-sync sync --provider aws-bedrock --days 30
+costroid sync --provider aws-bedrock --days 30
 ```
 
 The alias is also supported:
 
 ```sh
-costroid-sync sync --provider bedrock --days 30
+costroid sync --provider bedrock --days 30
 ```
 
 ## Permission Notes

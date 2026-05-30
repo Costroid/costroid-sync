@@ -3,7 +3,7 @@ package analysis
 import (
 	"testing"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 func TestTrends_WeeklyAggregation(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3" // registers the "sqlite3" driver
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 const (

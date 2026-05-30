@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/analysis"
-	"github.com/costroid/costroid-sync/output"
+	"github.com/costroid/costroid/analysis"
+	"github.com/costroid/costroid/output"
 )
 
 var forecastCmd = &cobra.Command{
@@ -29,7 +29,7 @@ func runForecast(cmd *cobra.Command, args []string) error {
 	result, err := analysis.Forecast(records, time.Now().UTC())
 	if err != nil {
 		if errors.Is(err, analysis.ErrInsufficientData) {
-			fmt.Fprintln(cmd.OutOrStdout(), "Not enough current-month usage data to forecast yet. Run `costroid-sync sync` on at least two observed days.")
+			fmt.Fprintln(cmd.OutOrStdout(), "Not enough current-month usage data to forecast yet. Run `costroid sync` on at least two observed days.")
 			return nil
 		}
 		return err

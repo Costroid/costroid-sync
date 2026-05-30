@@ -144,7 +144,7 @@ func TestSyncView_CompletedStructure(t *testing.T) {
 	out := m.View()
 	for _, want := range []string{
 		wordmark, "syncing usage metadata", "2/2",
-		"openai", "fetching metadata", "OK done · 12 records",
+		"openai", "fetching metadata", "OK done | 12 records",
 		"sqlite", "writing records",
 		"OK sync complete", "q to close",
 	} {
@@ -178,7 +178,7 @@ func TestSyncView_SkippedAndErrorMarkers(t *testing.T) {
 	m = nm.(syncModel)
 
 	out := m.View()
-	for _, want := range []string{"skipped · missing key", "X failed · request failed", "X sync failed"} {
+	for _, want := range []string{"skipped | missing key", "X failed | request failed", "X sync failed"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("View missing %q\n---\n%s", want, out)
 		}

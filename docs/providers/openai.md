@@ -23,13 +23,13 @@ None.
 ## Minimal Setup Steps
 
 1. Create an OpenAI organization admin key.
-2. Export `OPENAI_ADMIN_KEY` in the shell where you run `costroid-sync`.
+2. Export `OPENAI_ADMIN_KEY` in the shell where you run `costroid`.
 3. Run a sync for the desired lookback window.
 
 ## Example Sync Command
 
 ```sh
-costroid-sync sync --provider openai --days 7
+costroid sync --provider openai --days 7
 ```
 
 ## Permission Notes

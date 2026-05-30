@@ -39,7 +39,7 @@ export AZURE_OPENAI_RESOURCE_IDS=/subscriptions/.../Microsoft.CognitiveServices/
 ## Example Sync Command
 
 ```sh
-costroid-sync sync --provider azure-openai --days 30
+costroid sync --provider azure-openai --days 30
 ```
 
 ## Permission Notes

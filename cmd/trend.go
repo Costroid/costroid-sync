@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/analysis"
-	"github.com/costroid/costroid-sync/output"
+	"github.com/costroid/costroid/analysis"
+	"github.com/costroid/costroid/output"
 )
 
 var (
@@ -37,7 +37,7 @@ func runTrend(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(records) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No usage records yet. Run `costroid-sync sync` first.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No usage records yet. Run `costroid sync` first.")
 		return nil
 	}
 	periods := analysis.Trends(records, interval)

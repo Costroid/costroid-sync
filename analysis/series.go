@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 const dateLayout = "2006-01-02"

@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/costroid/costroid-sync/analysis"
+	"github.com/costroid/costroid/analysis"
 )
 
 func runeKey(s string) tea.KeyMsg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)} }
@@ -150,5 +150,7 @@ func demoDashboard(now time.Time) Dashboard {
 			{Provider: "openai", LatestActive: now.Add(-2 * time.Hour)},
 			{Provider: "anthropic", LatestActive: now.Add(-26 * time.Hour)},
 		},
+		// Deterministic, metadata-only daily-spend series for the sparkline.
+		Spark: []float64{1, 1, 2, 2, 3, 4, 4, 5, 6, 7, 6, 8, 9, 10},
 	}
 }

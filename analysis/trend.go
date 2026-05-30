@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 type TrendInterval string

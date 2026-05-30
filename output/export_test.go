@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 func TestWriteCSV_MetadataHeadersAndValues(t *testing.T) {

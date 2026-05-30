@@ -20,7 +20,7 @@ const (
 	envGCPBillingCurrency    = "GCP_BILLING_CURRENCY"
 
 	gcpBillingMaxDays      = 366
-	gcpBillingUserAgentDev = "costroid-sync/dev"
+	gcpBillingUserAgentDev = "costroid/dev"
 
 	gcpBillingDefaultTokenURL    = "https://oauth2.googleapis.com/token"
 	gcpBillingDefaultBigQueryURL = "https://bigquery.googleapis.com"

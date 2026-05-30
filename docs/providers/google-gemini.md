@@ -34,13 +34,13 @@ export GEMINI_BILLING_SERVICE_FILTER="gemini,vertex"
 ## Example Sync Command
 
 ```sh
-costroid-sync sync --provider google-gemini --days 30
+costroid sync --provider google-gemini --days 30
 ```
 
 The alias is also supported:
 
 ```sh
-costroid-sync sync --provider gemini --days 30
+costroid sync --provider gemini --days 30
 ```
 
 ## Permission Notes

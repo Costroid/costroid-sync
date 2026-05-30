@@ -95,7 +95,7 @@ func newSyncModel(stages []Stage, opts Options) syncModel {
 	}
 	m := syncModel{
 		rows: rows, runs: runs, spinner: sp, keys: newSyncKeyMap(),
-		help: help.New(), styles: styles, labelW: labelW, actionW: actionW,
+		help: newHelp(opts.ASCII), styles: styles, labelW: labelW, actionW: actionW,
 	}
 	if len(rows) == 0 {
 		m.done = true

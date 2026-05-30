@@ -3,7 +3,7 @@ package analysis
 import (
 	"sort"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 type Anomaly struct {

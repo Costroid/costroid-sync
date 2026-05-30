@@ -33,13 +33,13 @@ None.
 ## Example Sync Command
 
 ```sh
-costroid-sync sync --provider github-copilot --days 7
+costroid sync --provider github-copilot --days 7
 ```
 
 The alias is also supported:
 
 ```sh
-costroid-sync sync --provider copilot --days 7
+costroid sync --provider copilot --days 7
 ```
 
 ## Permission Notes

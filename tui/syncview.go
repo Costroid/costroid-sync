@@ -35,7 +35,7 @@ func (m syncModel) View() string {
 	if m.width < tinyMinWidth || m.height < tinyMinHeight {
 		return m.syncTooSmallView()
 	}
-	lines := []string{m.syncHeader(), ""}
+	lines := []string{m.syncHeader(), m.syncRule()}
 	for _, r := range m.rows {
 		lines = append(lines, m.rowView(r))
 	}
@@ -43,11 +43,24 @@ func (m syncModel) View() string {
 	return strings.Join(lines, "\n")
 }
 
-// syncHeader is the single brand/context line above the stage checklist.
+// syncHeader is the brand/context line above the stage checklist. It carries the
+// braille mark + wordmark and a real-state dot-progress strip (filled dots =
+// finished stages). The strip reflects only true stage outcomes — never a
+// fabricated or animated value (terminal-design §17).
 func (m syncModel) syncHeader() string {
 	s := m.styles
-	brand := s.Accent.Render(s.mark()+" "+wordmark) + "  " + s.Faint.Render("syncing usage metadata")
-	return brand + "  ·  " + s.Faint.Render("live · local SQLite ("+m.progressCount()+")")
+	brand := s.Accent.Render(s.brand()) + "  " + s.Faint.Render("syncing usage metadata")
+	dots := dotStrip(s, len(m.rows), m.finishedStages(), s.Accent)
+	return brand + s.sepToken() + dots + "  " + s.Faint.Render(m.progressCount())
+}
+
+// syncRule is the faint dotted separator between the header and the stage rows.
+func (m syncModel) syncRule() string {
+	w := m.width
+	if w < 1 {
+		w = 1
+	}
+	return m.styles.Faint.Render(strings.Repeat(m.styles.ruleChar(), w))
 }
 
 // rowView renders one stage as: label   action   status[ · detail].
@@ -65,11 +78,11 @@ func (m syncModel) statusView(r stageRow) string {
 	s := m.styles
 	switch r.state {
 	case StageRunning:
-		return m.spinner.View() + " " + s.Faint.Render("…")
+		return m.spinner.View() + " " + s.Faint.Render(s.ellipsis())
 	case StageDone:
 		return s.Accent.Render(m.glyphDone()+" done") + detailSuffix(s, r.detail)
 	case StageSkipped:
-		return s.Faint.Render(m.glyphSkip() + " skipped" + plainDetail(r.detail))
+		return s.Faint.Render(m.glyphSkip() + " skipped" + plainDetail(s, r.detail))
 	case StageError:
 		return s.Alert.Render(m.glyphErr()+" failed") + detailSuffix(s, r.detail)
 	default: // StagePending
@@ -83,11 +96,11 @@ func (m syncModel) statusLine() string {
 	switch {
 	case m.aborted:
 		return s.Alert.Render(m.glyphErr()+" sync failed") +
-			s.Faint.Render(" · run `costroid-sync sync` for details · q to close")
+			s.Faint.Render(s.sepToken()+"run `costroid sync` for details"+s.sepToken()+"q to close")
 	case m.done:
-		return s.Accent.Render(m.glyphDone()+" sync complete") + s.Faint.Render(" · q to close")
+		return s.Accent.Render(m.glyphDone()+" sync complete") + s.Faint.Render(s.sepToken()+"q to close")
 	default:
-		return s.Faint.Render("syncing… · Ctrl-C to cancel")
+		return s.Faint.Render("syncing" + s.ellipsis() + s.sepToken() + "Ctrl-C to cancel")
 	}
 }
 
@@ -97,36 +110,43 @@ func (m syncModel) syncTooSmallView() string {
 		return "sync failed (" + m.progressCount() + ")"
 	}
 	if m.done {
-		return "sync complete (" + m.progressCount() + ") · q"
+		return "sync complete (" + m.progressCount() + ")" + m.styles.sepToken() + "q"
 	}
-	return "syncing… (" + m.progressCount() + ")"
+	return "syncing" + m.styles.ellipsis() + " (" + m.progressCount() + ")"
 }
 
 // progressCount is "finished/total" where finished counts every terminal stage.
 func (m syncModel) progressCount() string {
+	return strconv.Itoa(m.finishedStages()) + "/" + strconv.Itoa(len(m.rows))
+}
+
+// finishedStages counts the stages that have reached a terminal outcome (done,
+// skipped, or errored). It is the truth behind the header dot-progress strip.
+func (m syncModel) finishedStages() int {
 	finished := 0
 	for _, r := range m.rows {
 		if r.state == StageDone || r.state == StageSkipped || r.state == StageError {
 			finished++
 		}
 	}
-	return strconv.Itoa(finished) + "/" + strconv.Itoa(len(m.rows))
+	return finished
 }
 
-// detailSuffix renders a faint " · detail" suffix when detail is non-empty.
+// detailSuffix renders a faint separator + detail suffix when detail is non-empty.
 func detailSuffix(s Styles, detail string) string {
 	if detail == "" {
 		return ""
 	}
-	return s.Faint.Render(" · " + detail)
+	return s.Faint.Render(s.sepToken() + detail)
 }
 
-// plainDetail renders " · detail" (already inside a styled span) when non-empty.
-func plainDetail(detail string) string {
+// plainDetail renders a separator + detail (already inside a styled span) when
+// non-empty. The separator degrades to ASCII under --plain via Styles.sepToken.
+func plainDetail(s Styles, detail string) string {
 	if detail == "" {
 		return ""
 	}
-	return " · " + detail
+	return s.sepToken() + detail
 }
 
 func (m syncModel) glyphDone() string {

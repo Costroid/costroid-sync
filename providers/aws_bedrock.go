@@ -24,7 +24,7 @@ const (
 
 	awsBedrockDefaultRegion = "us-east-1"
 	awsBedrockMaxDays       = 366
-	awsBedrockUserAgentDev  = "costroid-sync/dev"
+	awsBedrockUserAgentDev  = "costroid/dev"
 	awsBedrockDateLayout    = "2006-01-02T15:04:05Z"
 )
 

@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/costroid/costroid-sync/analysis"
-	"github.com/costroid/costroid-sync/storage"
+	"github.com/costroid/costroid/analysis"
+	"github.com/costroid/costroid/storage"
 )
 
 // loadWindowDays bounds how much local history the dashboard reads. It mirrors
@@ -50,6 +50,10 @@ type Dashboard struct {
 	Savings   []analysis.SavingsRecommendation
 	Syncs     []analysis.ProviderActivity
 	LastSync  *time.Time
+
+	// Spark is a metadata-only trailing daily-spend series (one total per UTC
+	// day, oldest→newest) used only to draw the static dashboard sparkline.
+	Spark []float64
 }
 
 // LoadDashboard opens the local SQLite database read-only and assembles a
@@ -59,7 +63,6 @@ type Dashboard struct {
 func LoadDashboard(ctx context.Context, now time.Time) Dashboard {
 	now = now.UTC()
 	d := Dashboard{Status: DataUnavailable, GeneratedAt: now, WindowDays: loadWindowDays}
-
 	db, path, status := openLocalDB()
 	d.DBPath = path
 	if db == nil {
@@ -67,7 +70,6 @@ func LoadDashboard(ctx context.Context, now time.Time) Dashboard {
 		return d
 	}
 	defer db.Close()
-
 	records, err := storage.GetRecords(ctx, db, now.AddDate(0, 0, -loadWindowDays))
 	if err != nil {
 		return d // DataUnavailable
@@ -98,6 +100,14 @@ func LoadDashboard(ctx context.Context, now time.Time) Dashboard {
 	d.Savings = analysis.Recommend(records)
 	d.Syncs = analysis.LatestActivityByProvider(records)
 	d.LastSync = loadLastSync(ctx, db)
+	// Build the sparkline series by field access only — see spendPoint (no import).
+	var pts []spendPoint
+	for _, r := range records {
+		if t, err := time.Parse(time.RFC3339, r.RecordedAt); err == nil {
+			pts = append(pts, spendPoint{at: t.UTC(), cost: r.CostUSD})
+		}
+	}
+	d.Spark = dailySparkSeries(pts, now, sparkDays)
 	return d
 }
 

@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/output"
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/output"
+	"github.com/costroid/costroid/providers"
 )
 
 var historyLast string
@@ -38,7 +38,7 @@ func runHistory(cmd *cobra.Command, args []string) error {
 	}
 	sortHistoryRecords(records)
 	if len(records) == 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "No usage records for the last %dd. Run `costroid-sync sync` first.\n", days)
+		fmt.Fprintf(cmd.OutOrStdout(), "No usage records for the last %dd. Run `costroid sync` first.\n", days)
 		return nil
 	}
 	output.WriteHistoryTable(cmd.OutOrStdout(), records)

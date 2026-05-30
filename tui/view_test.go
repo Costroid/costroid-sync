@@ -22,11 +22,14 @@ func tabBarWidth(m model) int {
 func TestOverviewBody_Golden(t *testing.T) {
 	s := newStyles(false, true)
 	got := stripANSI(overviewBody(demoDashboard(refTime()), s, 80))
+	// ASCII mode: the sparkline is omitted (numbers shown instead), the budget
+	// meter renders as a bracketed [####----] bar, and the anomaly cell carries a
+	// severity glyph (! for the worst day). All deterministic, metadata-only.
 	want := strings.Join([]string{
 		"Month to date   $38.00",
 		"Forecast        $99.39",
-		"Budget          60% (monthly)",
-		"Anomalies       1  ALERT",
+		"Budget          [#######-----]  60% (monthly)",
+		"Anomalies       1  ALERT  !",
 		"Last sync       4h ago",
 		"Window          last 45 days",
 	}, "\n")
@@ -38,7 +41,11 @@ func TestOverviewBody_Golden(t *testing.T) {
 func TestProvidersBody_Content(t *testing.T) {
 	s := newStyles(false, true)
 	got := stripANSI(providersBody(demoDashboard(refTime()), s, 80))
-	for _, sub := range []string{"Provider", "Cost", "Tokens", "Records", "openai", "$30.00", "anthropic", "$8.00"} {
+	// Core metadata columns plus the new share + ASCII spend-meter pattern.
+	for _, sub := range []string{
+		"Provider", "Cost", "Tokens", "Records", "Share", "Spend",
+		"openai", "$30.00", "anthropic", "$8.00", "79%", "[", "#",
+	} {
 		if !strings.Contains(got, sub) {
 			t.Errorf("providers body missing %q in:\n%s", sub, got)
 		}
@@ -48,7 +55,9 @@ func TestProvidersBody_Content(t *testing.T) {
 func TestView_FullLayout(t *testing.T) {
 	m := sizedModel(t, demoDashboard(refTime()), 100, 40)
 	out := stripANSI(m.View())
-	for _, sub := range []string{wordmark, "Overview", "$38.00", "1 Overview", "8 Export"} {
+	// wordmark + period summary in the header, "Overview" panel title, "$38.00"
+	// MTD, and the lowercase dot-tab nav names (numbers moved to the help footer).
+	for _, sub := range []string{wordmark, "Overview", "$38.00", "overview", "export"} {
 		if !strings.Contains(out, sub) {
 			t.Errorf("full view missing %q", sub)
 		}
@@ -106,6 +115,7 @@ func TestView_MetadataOnly(t *testing.T) {
 	forbidden := []string{
 		"prompt", "completion", "message", "content", "request body", "response body",
 		"bearer", "secret", "password", "api_key", "sk-", "system prompt",
+		"credential", "raw payload",
 	}
 	var all strings.Builder
 	m := sizedModel(t, demoDashboard(refTime()), 100, 40)

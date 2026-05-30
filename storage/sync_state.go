@@ -12,7 +12,7 @@ import (
 var ErrNoSyncState = errors.New("no sync recorded")
 
 // sync_state is a single-row table (id is pinned to 1) that records when
-// `costroid-sync sync` last completed. It exists so read-only consumers — the
+// `costroid sync` last completed. It exists so read-only consumers — the
 // T1.1 statusline in particular — can show data freshness ("last sync 4h")
 // without performing any provider/network call. It holds a timestamp only;
 // never any prompt, completion, or other content.

@@ -1,8 +1,8 @@
-# costroid-sync
+# costroid
 
 See what your AI actually costs.
 
-`costroid-sync` is an open-source Go CLI for tracking AI/LLM costs locally across providers. It reads usage and cost metadata from provider admin APIs or billing exports, normalizes it, and stores it in a local SQLite database on your machine.
+`costroid` is an open-source Go CLI for tracking AI/LLM costs locally across providers. It reads usage and cost metadata from provider admin APIs or billing exports, normalizes it, and stores it in a local SQLite database on your machine.
 
 API keys stay on your machine. Costroid™ does not proxy your model calls, does not receive your provider credentials, and does not store prompt or completion data.
 
@@ -35,28 +35,28 @@ See [docs/install.md](docs/install.md) for OS-specific details, troubleshooting,
 ### Linux and WSL (prebuilt)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Costroid/costroid/main/install.sh | sh
 ```
 
 Supports `amd64` and `arm64`. The script verifies the SHA256 checksum of the downloaded archive. Pin a release with `VERSION=vX.Y.Z`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.sh | VERSION=vX.Y.Z sh
+curl -fsSL https://raw.githubusercontent.com/Costroid/costroid/main/install.sh | VERSION=vX.Y.Z sh
 ```
 
 ### macOS (from source)
 
-No prebuilt macOS binary yet: `costroid-sync` uses `go-sqlite3`, which requires CGO and isn't cross-compiled from the current Linux release runner. Install via Go:
+No prebuilt macOS binary yet: `costroid` uses `go-sqlite3`, which requires CGO and isn't cross-compiled from the current Linux release runner. Install via Go:
 
 ```sh
 xcode-select --install
-go install github.com/costroid/costroid-sync@latest
+go install github.com/costroid/costroid@latest
 ```
 
 ### Windows (from source via PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Costroid/costroid/main/install.ps1 | iex
 ```
 
 Builds from source via `go install`; requires Go 1.24+ and a C compiler (MinGW-w64 or msys2). No prebuilt Windows binary yet.
@@ -64,12 +64,12 @@ Builds from source via `go install`; requires Go 1.24+ and a C compiler (MinGW-w
 ### All platforms (Go fallback)
 
 ```sh
-go install github.com/costroid/costroid-sync@latest
+go install github.com/costroid/costroid@latest
 ```
 
 ### Manual download (Linux)
 
-Download the tarball matching your architecture from <https://github.com/Costroid/costroid-sync/releases>, extract `costroid-sync`, and place it somewhere on your `PATH`.
+Download the tarball matching your architecture from <https://github.com/Costroid/costroid/releases>, extract `costroid`, and place it somewhere on your `PATH`.
 
 ## Quick Start
 
@@ -82,31 +82,31 @@ export OPENAI_ADMIN_KEY=sk-admin-...
 Sync recent usage:
 
 ```sh
-costroid-sync sync --provider openai --days 7
+costroid sync --provider openai --days 7
 ```
 
 Review savings and forecasts from local metadata:
 
 ```sh
-costroid-sync savings
-costroid-sync forecast
+costroid savings
+costroid forecast
 ```
 
 ## Commands
 
 | Command | Purpose | Example |
 | --- | --- | --- |
-| `sync` | Fetch provider usage and cost metadata into local SQLite. | `costroid-sync sync --provider openai --days 7` |
-| `savings` | Show local savings recommendations from offline pricing estimates. | `costroid-sync savings` |
-| `history` | Show recent local cost records. | `costroid-sync history --last 30d` |
-| `trend` | Aggregate local spend by week or month. | `costroid-sync trend --weekly` |
-| `forecast` | Forecast current calendar month spend from local daily totals. | `costroid-sync forecast` |
-| `anomalies` | List local daily spend spikes above the rolling baseline. | `costroid-sync anomalies` |
-| `budget` | Set or check a local spending budget. | `costroid-sync budget --set 500 --period monthly` |
-| `export` | Export local metadata records to stdout. | `costroid-sync export --format csv > costs.csv` |
-| `statusline` | Print a one-line local cost summary for tmux/Byobu/shell status bars. | `costroid-sync statusline --format tmux` |
-| `tui` | Open an interactive fullscreen dashboard of local cost metadata. | `costroid-sync tui` |
-| `version` | Print the CLI version. | `costroid-sync version` |
+| `sync` | Fetch provider usage and cost metadata into local SQLite. | `costroid sync --provider openai --days 7` |
+| `savings` | Show local savings recommendations from offline pricing estimates. | `costroid savings` |
+| `history` | Show recent local cost records. | `costroid history --last 30d` |
+| `trend` | Aggregate local spend by week or month. | `costroid trend --weekly` |
+| `forecast` | Forecast current calendar month spend from local daily totals. | `costroid forecast` |
+| `anomalies` | List local daily spend spikes above the rolling baseline. | `costroid anomalies` |
+| `budget` | Set or check a local spending budget. | `costroid budget --set 500 --period monthly` |
+| `export` | Export local metadata records to stdout. | `costroid export --format csv > costs.csv` |
+| `statusline` | Print a one-line local cost summary for tmux/Byobu/shell status bars. | `costroid statusline --format tmux` |
+| `tui` | Open an interactive fullscreen dashboard of local cost metadata. | `costroid tui` |
+| `version` | Print the CLI version. | `costroid version` |
 
 Supported `sync --provider` values: `openai`, `anthropic`, `github-copilot` (alias `copilot`), `google-gemini` (alias `gemini`), `gcp-billing` (alias `gcp`), `azure-openai`, `aws-bedrock` (alias `bedrock`), `all`. Defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
 
@@ -130,7 +130,7 @@ Provider docs index: [docs/providers/README.md](docs/providers/README.md)
 
 ## Statusline
 
-`costroid-sync statusline` prints a single deterministic line summarising your local cost
+`costroid statusline` prints a single deterministic line summarising your local cost
 metadata, for tmux/Byobu/shell status bars:
 
 ```text
@@ -138,16 +138,16 @@ metadata, for tmux/Byobu/shell status bars:
 ```
 
 It reads the local SQLite database **read-only** and makes **no** network request, provider API
-call, or provider sync — run `costroid-sync sync` separately on your own schedule. It always
+call, or provider sync — run `costroid sync` separately on your own schedule. It always
 prints one line and exits `0`; when there is no local data yet it prints
-`costroid  no local data  run costroid-sync sync`.
+`costroid  no local data  run costroid sync`.
 
 ```sh
-costroid-sync statusline --format plain   # default; one line, ⣿ glyph when the locale is UTF-8
-costroid-sync statusline --format tmux    # adds tmux #[fg=...] style codes
-costroid-sync statusline --format byobu   # adds ANSI color for a Byobu status script
-costroid-sync statusline --format json    # stable machine-readable object for scripts
-costroid-sync statusline --plain          # force ASCII glyph + no color, regardless of --format
+costroid statusline --format plain   # default; one line, ⣿ glyph when the locale is UTF-8
+costroid statusline --format tmux    # adds tmux #[fg=...] style codes
+costroid statusline --format byobu   # adds ANSI color for a Byobu status script
+costroid statusline --format json    # stable machine-readable object for scripts
+costroid statusline --plain          # force ASCII glyph + no color, regardless of --format
 ```
 
 `--plain` and a non-empty `NO_COLOR` both suppress color. tmux and Byobu own the polling cadence —
@@ -156,40 +156,46 @@ there is no watch process or daemon:
 ```tmux
 # tmux: ~/.tmux.conf
 set -g status-interval 60
-set -g status-right "#(costroid-sync statusline --format tmux) %H:%M"
+set -g status-right "#(costroid statusline --format tmux) %H:%M"
 ```
 
 ```bash
 # Byobu: ~/.byobu/bin/60_costroid  (the numeric prefix sets the interval)
 #!/usr/bin/env bash
-costroid-sync statusline --format byobu
+costroid statusline --format byobu
 ```
 
 ## TUI
 
-`costroid-sync tui` opens an opt-in, keyboard-first fullscreen dashboard (alternate screen) of
+`costroid tui` opens an opt-in, keyboard-first fullscreen dashboard (alternate screen) of
 your local cost metadata, with panels for Overview, Providers, Models, Budget, Forecast,
 Anomalies, Recent Syncs, and Export hints:
 
 ```text
-⣿ costroid  AI cost dashboard  ·  last 45 days · local SQLite
-1 Overview 2 Providers 3 Models 4 Budget 5 Forecast 6 Anomalies 7 Syncs 8 Export
-
+⣿ ⠉⠕⠎⠞⠗⠕⠊⠙ costroid · MTD $38.00 · forecast $99.39 · last 45d
+●overview ·providers ·models ·budget ·forecast ·anomalies ·syncs ·export
+┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
 Overview
-  Month to date   $38.00
+  Month to date   $38.00   ▁▂▃▄▅▆▇
   Forecast        $99.39
-  Budget          60% (monthly)
-  Anomalies       1
+  Budget          ███████▎····  60% (monthly)
+  Anomalies       1  ALERT  █
   Last sync       4h ago
 ```
 
+The dashboard uses a monochrome-first dot/braille identity: the selected panel is marked by a
+filled dot (`●`) rather than color alone, spend shares and budgets render as braille/block meters,
+and a static sparkline shows recent daily spend. Under `--plain`, `NO_COLOR`, or a non-UTF-8
+locale it degrades to ASCII (`*`/`.` nav dots, `[####----]` meters, numbers in place of the
+sparkline) so the layout reads with zero color. Money values are always stable — never animated.
+
 Like `statusline`, it reads the local SQLite database **read-only** and makes **no** network
-request, provider API call, or provider sync — run `costroid-sync sync` separately. It changes no
+request, provider API call, or provider sync — run `costroid sync` separately. It changes no
 other command's output.
 
 ```sh
-costroid-sync tui                  # open the dashboard
-costroid-sync tui --plain          # ASCII-only glyphs, no color
+costroid tui                  # open the dashboard
+costroid tui --plain          # ASCII-only glyphs, no color
 ```
 
 Navigation: `Tab`/`Shift-Tab` or `1`–`8` switch panels, `j`/`k` (or arrows) scroll, `g`/`G` jump to
@@ -239,8 +245,8 @@ Savings recommendations use static seed pricing for offline estimates. They are 
 ## Build From Source
 
 ```sh
-go build -o costroid-sync .
-./costroid-sync --version
+go build -o costroid .
+./costroid --version
 ```
 
 Because `go-sqlite3` uses CGO, source builds require a working C compiler.

@@ -2,7 +2,7 @@ package analysis
 
 // ModelPricing is a single seed-pricing row. Self-describing so future
 // pricing sources (bundled JSON, local SQLite table, or a
-// `costroid-sync pricing update` command) can populate it directly
+// `costroid pricing update` command) can populate it directly
 // without touching savings.go.
 type ModelPricing struct {
 	Provider        string

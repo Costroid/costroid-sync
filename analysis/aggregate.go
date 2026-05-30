@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 // ProviderTotal aggregates spend and token metadata for a single provider.

@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/analysis"
-	"github.com/costroid/costroid-sync/output"
-	"github.com/costroid/costroid-sync/storage"
+	"github.com/costroid/costroid/analysis"
+	"github.com/costroid/costroid/output"
+	"github.com/costroid/costroid/storage"
 )
 
 var (
@@ -28,7 +28,7 @@ var statuslineCmd = &cobra.Command{
 		"forecast, budget, anomalies, and last-sync freshness) for tmux/Byobu/shell status bars, " +
 		"or a stable JSON object for scripts.\n\n" +
 		"It reads the local SQLite database read-only and performs no network request, provider " +
-		"API call, or provider sync — run `costroid-sync sync` separately on your own schedule. " +
+		"API call, or provider sync — run `costroid sync` separately on your own schedule. " +
 		"tmux/Byobu own the polling cadence; there is no watch process or daemon.",
 	RunE: runStatusline,
 }

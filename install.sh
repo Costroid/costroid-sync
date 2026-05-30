@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 
-repo="Costroid/costroid-sync"
-module_path="github.com/costroid/costroid-sync"
-binary="costroid-sync"
+repo="Costroid/costroid"
+module_path="github.com/costroid/costroid"
+binary="costroid"
 install_dir="${INSTALL_DIR:-/usr/local/bin}"
 version="${VERSION:-latest}"
 docs_url="https://github.com/$repo/blob/main/docs/install.md"
@@ -125,7 +125,7 @@ os="$(detect_os)"
 arch="$(detect_arch)"
 
 if [ "$os" = darwin ]; then
-  err "No prebuilt macOS binary yet (costroid-sync uses go-sqlite3, which requires CGO)."
+  err "No prebuilt macOS binary yet (costroid uses go-sqlite3, which requires CGO)."
   err "Install from source:"
   err "  1. Install Xcode Command Line Tools: xcode-select --install"
   err "  2. Install Go 1.24+:                 https://go.dev/dl/"

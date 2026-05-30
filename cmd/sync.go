@@ -10,11 +10,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/analysis"
-	"github.com/costroid/costroid-sync/client"
-	"github.com/costroid/costroid-sync/output"
-	"github.com/costroid/costroid-sync/providers"
-	"github.com/costroid/costroid-sync/storage"
+	"github.com/costroid/costroid/analysis"
+	"github.com/costroid/costroid/client"
+	"github.com/costroid/costroid/output"
+	"github.com/costroid/costroid/providers"
+	"github.com/costroid/costroid/storage"
 )
 
 const (

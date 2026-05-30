@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 func newTestDB(t *testing.T) *sql.DB {

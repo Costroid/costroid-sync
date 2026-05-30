@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 // Statusline holds the metadata-only metrics shown by the `statusline` command.

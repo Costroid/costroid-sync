@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/costroid/costroid-sync/cmd"
+	"github.com/costroid/costroid/cmd"
 )
 
 func main() {

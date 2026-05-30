@@ -7,7 +7,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/tui"
+	"github.com/costroid/costroid/tui"
 )
 
 var (
@@ -22,7 +22,7 @@ var tuiCmd = &cobra.Command{
 		"cost metadata: overview, providers, models, budget, forecast, anomalies, recent syncs, " +
 		"and export hints.\n\n" +
 		"It reads the local SQLite database read-only and performs no network request, provider " +
-		"API call, or provider sync — run `costroid-sync sync` separately. It is opt-in and changes " +
+		"API call, or provider sync — run `costroid sync` separately. It is opt-in and changes " +
 		"no other command's output. Navigate with Tab/1-8 and j/k; press ? for help and q to quit.\n\n" +
 		"In a pipe or non-interactive terminal (or TERM=dumb) it refuses cleanly instead of painting " +
 		"an alternate screen into a pipe.",
@@ -43,7 +43,7 @@ func runTUI(cmd *cobra.Command, args []string) error {
 	stdinTTY := isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd())
 	if !tui.InteractiveAllowed(stdoutTTY, stdinTTY, os.Getenv("TERM")) {
 		return fmt.Errorf("the tui needs an interactive terminal; pipe-friendly output is available " +
-			"via `costroid-sync statusline` or `costroid-sync history`")
+			"via `costroid statusline` or `costroid history`")
 	}
 
 	noColor := os.Getenv("NO_COLOR") != ""

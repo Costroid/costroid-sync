@@ -39,13 +39,13 @@ export GCP_BILLING_CURRENCY=USD
 ## Example Sync Command
 
 ```sh
-costroid-sync sync --provider gcp-billing --days 30
+costroid sync --provider gcp-billing --days 30
 ```
 
 The alias is also supported:
 
 ```sh
-costroid-sync sync --provider gcp --days 30
+costroid sync --provider gcp --days 30
 ```
 
 ## Permission Notes

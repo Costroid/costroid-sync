@@ -19,7 +19,7 @@ const (
 	DefaultGitHubAPIBaseURL     = "https://api.github.com"
 	githubCopilotProviderName   = "github-copilot"
 	githubCopilotAPIVersion     = "2026-03-10"
-	githubCopilotUserAgentDev   = "costroid-sync/dev"
+	githubCopilotUserAgentDev   = "costroid/dev"
 	githubCopilotMaxDays        = 31
 	githubCopilotPathPrefix     = "/organizations/"
 	githubCopilotPathSuffix     = "/settings/billing/premium_request/usage"

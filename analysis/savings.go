@@ -3,7 +3,7 @@ package analysis
 import (
 	"sort"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 // SavingsRecommendation describes a single cheaper-model swap.

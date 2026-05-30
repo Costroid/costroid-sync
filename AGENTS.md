@@ -113,7 +113,7 @@ func processOpenAIUsage(raw map[string]interface{}) NormalizedCostRecord {
 - ❌ Monorepo tools (Turborepo, Nx)
 - ❌ axios
 
-### Go CLI Dependencies (costroid-sync)
+### Go CLI Dependencies (costroid)
 
 | Package | Purpose |
 |---------|---------|
@@ -267,10 +267,10 @@ costroid-cloud/
         └── ingest.test.ts         # Must test prompt content rejection
 ```
 
-### CLI Sync Agent (separate Go repo: `costroid/costroid-sync`)
+### CLI Sync Agent (separate Go repo: `costroid/costroid`)
 
 ```
-costroid-sync/
+costroid/
 ├── go.mod
 ├── go.sum
 ├── main.go                        # CLI entry point
@@ -341,7 +341,7 @@ costroid-sync/
 
 ### Rule 1: Read Before Writing
 Read in order: (1) This file. (2) `spec.md`. (3) `SKILL.md` if working on marketplace.
-For CLI agent work: read the `costroid-sync/README.md` as well.
+For CLI agent work: read the `costroid/README.md` as well.
 
 ### Rule 2: Work in Priority Order
 
@@ -396,14 +396,16 @@ It must not become model routing, proxying, automatic switching, or LLM observab
 T1: Terminal Experience Layer — founder-approved pre-C8 design/statusline gate after W6 for D1/T1.0/T1.1. T1.2 (`tui`) and T1.3 (`sync --tui`) are founder-approved and implemented.
 
 T1.3 Sync TUI — APPROVED & IMPLEMENTED (2026-05-30). This is the durable, canonical approval/scope/constraints record for T1.3; it lives here in AGENTS.md (the local MarkdownDocs/DECISIONS.md ADR-013 is non-tracked supporting detail only). The founder explicitly approved T1.3 implementation on 2026-05-30, after T1.2 was complete.
-- Scope: opt-in `costroid-sync sync --tui` only. It is never default CLI behavior; plain `costroid-sync sync` output is unchanged (no default sync output changes).
+- Scope: opt-in `costroid sync --tui` only. It is never default CLI behavior; plain `costroid sync` output is unchanged (no default sync output changes).
 - The sync TUI may call provider APIs ONLY because the user explicitly invoked `sync`. No provider polling outside that explicit user-invoked sync; no watch process, daemon, timer, socket, or background refresh.
 - No terminal wrapper, no child PTY, no tmux/multiplexer replacement, no raw-terminal overlay.
 - Metadata-only: no prompt/completion/message/content/request-body/response-body/raw-provider-payload/trace/log/source-code/repository-content handling. No provider-credential display. No raw provider payload display.
 - No fake scanning/thinking and no animated money. Progress/animation may only reflect real sync task state. Non-TTY, CI, `TERM=dumb`, and `--no-animation` fall back to the deterministic `sync` output.
 - Dependency scope stays within the previously approved T1.2 dependency decision (ADR-011): `bubbletea v1.3.10` + scoped `bubbles v0.21.0` only; adding `bubbles/spinner` for T1.3 real-stage progress introduced no new module. Any further T1 work or Go dependency requires a new ADR/dependency review.
 
-T1.1 first implementation is statusline MVP: `costroid-sync statusline --format plain|tmux|byobu|json`, local SQLite only, deterministic one-line stdout, no provider API/network calls, no provider sync on redraw, no new Go dependency.
+T1.5 Braille/Dot Interaction Polish — IMPLEMENTED (2026-05-30). A visual/interaction polish pass over the existing opt-in `tui` and `sync --tui` surfaces ONLY, expressing the approved monochrome-first dot/braille identity (braille mark + wordmark header, filled/hollow dot panel selection, braille/block spend meters, a static recent-spend sparkline, dotted separators, real-state sync dot-progress). Constraints: no new Go dependency (stays within ADR-011 scope); no provider/storage/cloud/default-output change; metadata-only; money never animated; one accent color; selection legible with zero color; full ASCII/`NO_COLOR`/`--plain`/non-TTY fallback preserved. It is still opt-in and never default CLI behavior.
+
+T1.1 first implementation is statusline MVP: `costroid statusline --format plain|tmux|byobu|json`, local SQLite only, deterministic one-line stdout, no provider API/network calls, no provider sync on redraw, no new Go dependency.
 T1 must not become default CLI behavior, raw-terminal overlay, tmux replacement, child-PTY wrapper, model gateway, proxy, tracing, or LLM observability. Bubble Tea/Bubbles are limited to the approved, implemented T1.2 (`tui`) and T1.3 (`sync --tui`) work; any further Go dependency requires a new ADR/dependency review.
 ```
 
@@ -452,7 +454,7 @@ Every ingestion function MUST have a test that passes mock data WITH prompt cont
 | Frontend | `app/dashboard/`, `app/(auth)/`, `components/` | `lib/marketplace/`, `app/api/` |
 | Integration | `lib/marketplace/`, `lib/notifications/`, `app/api/webhooks/`, `app/marketplace/` | Dashboard UI, auth |
 
-**Go CLI repo (costroid-sync):** Single developer — no agent coordination needed. All code in one repo.
+**Go CLI repo (costroid):** Single developer — no agent coordination needed. All code in one repo.
 
 Backend wins on conflicts.
 

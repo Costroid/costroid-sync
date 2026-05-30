@@ -17,7 +17,7 @@ const (
 	anthropicUsagePath     = "/v1/organizations/usage_report/messages"
 	anthropicCostPath      = "/v1/organizations/cost_report"
 	anthropicAPIVersion    = "2023-06-01"
-	anthropicUserAgentDev  = "costroid-sync/dev"
+	anthropicUserAgentDev  = "costroid/dev"
 	anthropicProviderName  = "anthropic"
 	anthropicBucketWidth1d = "1d"
 )

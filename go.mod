@@ -1,4 +1,4 @@
-module github.com/costroid/costroid-sync
+module github.com/costroid/costroid
 
 go 1.24.0
 

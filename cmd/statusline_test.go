@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/providers"
-	"github.com/costroid/costroid-sync/storage"
+	"github.com/costroid/costroid/providers"
+	"github.com/costroid/costroid/storage"
 )
 
 // runStatuslineCapture invokes the statusline command in-process and returns
@@ -48,7 +48,7 @@ func TestStatuslineCmd_MissingDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runStatusline: %v", err)
 	}
-	if out != "costroid  no local data  run costroid-sync sync\n" {
+	if out != "costroid  no local data  run costroid sync\n" {
 		t.Errorf("missing DB line: %q", out)
 	}
 	// The statusline must never create the database.
@@ -74,7 +74,7 @@ func TestStatuslineCmd_EmptyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runStatusline: %v", err)
 	}
-	if out != "costroid  no local data  run costroid-sync sync\n" {
+	if out != "costroid  no local data  run costroid sync\n" {
 		t.Errorf("empty DB line: %q", out)
 	}
 

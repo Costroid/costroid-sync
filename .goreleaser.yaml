@@ -1,10 +1,10 @@
 version: 2
-project_name: costroid-sync
+project_name: costroid
 
 builds:
   - id: linux-amd64
     main: .
-    binary: costroid-sync
+    binary: costroid
     goos:
       - linux
     goarch:
@@ -15,11 +15,11 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X github.com/costroid/costroid-sync/cmd.Version={{ .Version }}
+      - -s -w -X github.com/costroid/costroid/cmd.Version={{ .Version }}
 
   - id: linux-arm64
     main: .
-    binary: costroid-sync
+    binary: costroid
     goos:
       - linux
     goarch:
@@ -30,7 +30,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X github.com/costroid/costroid-sync/cmd.Version={{ .Version }}
+      - -s -w -X github.com/costroid/costroid/cmd.Version={{ .Version }}
 
 archives:
   - id: linux-amd64

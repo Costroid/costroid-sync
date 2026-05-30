@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 func TestOpenReadOnly_RejectsWritesAndReadsExistingData(t *testing.T) {

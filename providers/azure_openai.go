@@ -29,7 +29,7 @@ const (
 	azureMgmtScope         = "https://management.azure.com/.default"
 	azureCostAPIVersion    = "2025-03-01"
 	azureMonitorAPIVersion = "2023-10-01"
-	azureUserAgentDev      = "costroid-sync/dev"
+	azureUserAgentDev      = "costroid/dev"
 
 	azureDefaultTokenBaseURL = "https://login.microsoftonline.com"
 	azureDefaultMgmtBaseURL  = "https://management.azure.com"

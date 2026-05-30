@@ -17,12 +17,19 @@ type keyMap struct {
 	Quit   key.Binding
 }
 
-func newKeyMap() keyMap {
+// newKeyMap builds the keyboard map. The help labels for the cursor keys use
+// arrow glyphs in UTF-8 mode and degrade to the plain letter keys under --plain
+// so the help footer stays ASCII-safe (the key bindings themselves are unchanged).
+func newKeyMap(ascii bool) keyMap {
+	up, down, left, right := "↑/k", "↓/j", "←/h", "→/l"
+	if ascii {
+		up, down, left, right = "k", "j", "h", "l"
+	}
 	return keyMap{
-		Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "scroll up")),
-		Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "scroll down")),
-		Left:   key.NewBinding(key.WithKeys("left", "h", "shift+tab"), key.WithHelp("←/h", "prev panel")),
-		Right:  key.NewBinding(key.WithKeys("right", "l", "tab"), key.WithHelp("→/l", "next panel")),
+		Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp(up, "scroll up")),
+		Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp(down, "scroll down")),
+		Left:   key.NewBinding(key.WithKeys("left", "h", "shift+tab"), key.WithHelp(left, "prev panel")),
+		Right:  key.NewBinding(key.WithKeys("right", "l", "tab"), key.WithHelp(right, "next panel")),
 		Top:    key.NewBinding(key.WithKeys("g", "home"), key.WithHelp("g", "top")),
 		Bottom: key.NewBinding(key.WithKeys("G", "end"), key.WithHelp("G", "bottom")),
 		Jump:   key.NewBinding(key.WithKeys("1", "2", "3", "4", "5", "6", "7", "8"), key.WithHelp("1-8", "jump to panel")),

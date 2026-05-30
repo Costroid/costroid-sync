@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/costroid/costroid-sync/providers"
-	"github.com/costroid/costroid-sync/storage"
-	"github.com/costroid/costroid-sync/tui"
+	"github.com/costroid/costroid/providers"
+	"github.com/costroid/costroid/storage"
+	"github.com/costroid/costroid/tui"
 )
 
 // stubProvider is a fake metadata source for exercising the sync-TUI stage

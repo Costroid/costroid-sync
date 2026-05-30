@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/costroid/costroid-sync/analysis"
+	"github.com/costroid/costroid/analysis"
 )
 
 func fptr(f float64) *float64 { return &f }
@@ -128,7 +128,7 @@ func TestStatusline_NoDataLines(t *testing.T) {
 		v := okView("plain")
 		v.Status = status
 		out := render(t, v)
-		want := "costroid  no local data  run costroid-sync sync\n"
+		want := "costroid  no local data  run costroid sync\n"
 		if out != want {
 			t.Errorf("%s line: got %q, want %q", status, out, want)
 		}

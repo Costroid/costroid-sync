@@ -1,30 +1,30 @@
-# Installing costroid-sync
+# Installing costroid
 
-`costroid-sync` is distributed as:
+`costroid` is distributed as:
 
 - prebuilt Linux binaries (`amd64`, `arm64`) attached to each GitHub release
 - a `go install` source path that works on any OS with Go 1.24+ and a C compiler
 
-Native macOS and Windows binaries are **not** shipped yet. `costroid-sync` uses [`github.com/mattn/go-sqlite3`](https://github.com/mattn/go-sqlite3) for its local SQLite store, which requires CGO. The current release pipeline runs on a Linux runner and only produces Linux artifacts. macOS and Windows users build from source via `go install`.
+Native macOS and Windows binaries are **not** shipped yet. `costroid` uses [`github.com/mattn/go-sqlite3`](https://github.com/mattn/go-sqlite3) for its local SQLite store, which requires CGO. The current release pipeline runs on a Linux runner and only produces Linux artifacts. macOS and Windows users build from source via `go install`.
 
 ## Quick reference
 
 | OS | Command |
 | --- | --- |
-| Linux, WSL | `curl -fsSL https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.sh \| sh` |
-| Windows (PowerShell) | `irm https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.ps1 \| iex` |
-| macOS, any | `go install github.com/costroid/costroid-sync@latest` |
+| Linux, WSL | `curl -fsSL https://raw.githubusercontent.com/Costroid/costroid/main/install.sh \| sh` |
+| Windows (PowerShell) | `irm https://raw.githubusercontent.com/Costroid/costroid/main/install.ps1 \| iex` |
+| macOS, any | `go install github.com/costroid/costroid@latest` |
 
 After install, run:
 
 ```sh
-costroid-sync version
+costroid version
 ```
 
 ## Linux and WSL (prebuilt)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Costroid/costroid/main/install.sh | sh
 ```
 
 Supported architectures: `amd64`, `arm64`. The `arm64` artifact is cross-compiled in CI but not exercised end-to-end on real arm64 hardware in CI — report any issues.
@@ -32,12 +32,12 @@ Supported architectures: `amd64`, `arm64`. The `arm64` artifact is cross-compile
 ### Pin a release
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.sh | VERSION=v0.2.0 sh
+curl -fsSL https://raw.githubusercontent.com/Costroid/costroid/main/install.sh | VERSION=vX.Y.Z sh
 ```
 
 ### Install location
 
-Default: `/usr/local/bin/costroid-sync`. The script tries in order:
+Default: `/usr/local/bin/costroid`. The script tries in order:
 
 1. Copy directly if `/usr/local/bin` is writable.
 2. Otherwise use `sudo` (you'll be prompted).
@@ -46,7 +46,7 @@ Default: `/usr/local/bin/costroid-sync`. The script tries in order:
 Override with the `INSTALL_DIR` env var:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.sh | INSTALL_DIR="$HOME/.local/bin" sh
+curl -fsSL https://raw.githubusercontent.com/Costroid/costroid/main/install.sh | INSTALL_DIR="$HOME/.local/bin" sh
 ```
 
 Make sure your chosen directory is on `PATH`.
@@ -65,7 +65,7 @@ No prebuilt macOS binary yet. Install via Go:
 
 ```sh
 xcode-select --install
-go install github.com/costroid/costroid-sync@latest
+go install github.com/costroid/costroid@latest
 ```
 
 ### Prerequisites
@@ -76,7 +76,7 @@ go install github.com/costroid/costroid-sync@latest
 ### Where the binary lands
 
 ```sh
-$(go env GOPATH)/bin/costroid-sync
+$(go env GOPATH)/bin/costroid
 ```
 
 Add that directory to your `PATH` if it isn't already:
@@ -88,21 +88,21 @@ echo 'export PATH="$(go env GOPATH)/bin:$PATH"' >> ~/.zshrc
 ### Pin a release
 
 ```sh
-go install github.com/costroid/costroid-sync@v0.2.0
+go install github.com/costroid/costroid@vX.Y.Z
 ```
 
 ## Windows (from source via PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Costroid/costroid/main/install.ps1 | iex
 ```
 
 The installer:
 
 1. Confirms `go` is on `PATH` (fails clearly if not).
 2. Confirms `gcc` is on `PATH` (fails clearly if not — `go-sqlite3` won't link without it).
-3. Runs `go install github.com/costroid/costroid-sync@latest`.
-4. Reports the install path (`$(go env GOPATH)\bin\costroid-sync.exe`).
+3. Runs `go install github.com/costroid/costroid@latest`.
+4. Reports the install path (`$(go env GOPATH)\bin\costroid.exe`).
 5. Prints a `PATH` update suggestion if needed.
 
 ### Prerequisites
@@ -115,21 +115,21 @@ The installer:
 Download the script first, then run with `-Version`:
 
 ```powershell
-irm https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.ps1 -OutFile install.ps1
-./install.ps1 -Version v0.2.0
+irm https://raw.githubusercontent.com/Costroid/costroid/main/install.ps1 -OutFile install.ps1
+./install.ps1 -Version vX.Y.Z
 ```
 
 Or via env var:
 
 ```powershell
-$env:VERSION = "v0.2.0"
-irm https://raw.githubusercontent.com/Costroid/costroid-sync/main/install.ps1 | iex
+$env:VERSION = "vX.Y.Z"
+irm https://raw.githubusercontent.com/Costroid/costroid/main/install.ps1 | iex
 ```
 
 ### Where the binary lands
 
 ```powershell
-$(go env GOPATH)\bin\costroid-sync.exe
+$(go env GOPATH)\bin\costroid.exe
 ```
 
 ### Add it to your user PATH
@@ -145,24 +145,24 @@ This modifies your user `PATH` only and persists across sessions. Open a new Pow
 If you already have a Go toolchain and a C compiler:
 
 ```sh
-go install github.com/costroid/costroid-sync@latest
+go install github.com/costroid/costroid@latest
 ```
 
 To build a local checkout:
 
 ```sh
-git clone https://github.com/Costroid/costroid-sync
-cd costroid-sync
-go build -o costroid-sync .
-./costroid-sync version
+git clone https://github.com/Costroid/costroid
+cd costroid
+go build -o costroid .
+./costroid version
 ```
 
 Requires Go 1.24+ and a working C compiler.
 
 ## Manual release download (Linux)
 
-1. Open <https://github.com/Costroid/costroid-sync/releases> and pick a release.
-2. Download `costroid-sync_linux_amd64.tar.gz` or `costroid-sync_linux_arm64.tar.gz`.
+1. Open <https://github.com/Costroid/costroid/releases> and pick a release.
+2. Download `costroid_linux_amd64.tar.gz` or `costroid_linux_arm64.tar.gz`.
 3. Download `checksums.txt` from the same release.
 4. Verify:
 
@@ -173,14 +173,14 @@ Requires Go 1.24+ and a working C compiler.
 5. Extract and place on `PATH`:
 
    ```sh
-   tar -xzf costroid-sync_linux_amd64.tar.gz
-   sudo install -m 0755 costroid-sync /usr/local/bin/
+   tar -xzf costroid_linux_amd64.tar.gz
+   sudo install -m 0755 costroid /usr/local/bin/
    ```
 
 ## Verify your install
 
 ```sh
-costroid-sync version
+costroid version
 ```
 
 You should see the release tag (e.g. `v0.2.0`).
@@ -189,7 +189,7 @@ You should see the release tag (e.g. `v0.2.0`).
 
 **`Permission denied` writing to `/usr/local/bin`.** Re-run with `sudo`, or set `INSTALL_DIR=$HOME/.local/bin` and make sure that directory is on your `PATH`.
 
-**`command not found: costroid-sync` after install succeeded.** The install directory isn't on your `PATH`. For Linux/macOS, add it in your shell rc file. For Windows, see the `setx`-equivalent snippet above.
+**`command not found: costroid` after install succeeded.** The install directory isn't on your `PATH`. For Linux/macOS, add it in your shell rc file. For Windows, see the `setx`-equivalent snippet above.
 
 **`go: command not found`.** Install Go 1.24+ from <https://go.dev/dl/>, restart your shell, then re-run the installer.
 
@@ -203,4 +203,4 @@ You should see the release tag (e.g. `v0.2.0`).
 
 ## Privacy note
 
-The install scripts only download release artifacts from GitHub and place a binary on your local filesystem. They do not contact any Costroid-operated service and do not transmit any user, system, or usage data. `costroid-sync` itself stores normalized cost metadata locally in `~/.costroid/costroid.db`; see the main [README](../README.md#security-and-privacy) for the full privacy model.
+The install scripts only download release artifacts from GitHub and place a binary on your local filesystem. They do not contact any Costroid-operated service and do not transmit any user, system, or usage data. `costroid` itself stores normalized cost metadata locally in `~/.costroid/costroid.db`; see the main [README](../README.md#security-and-privacy) for the full privacy model.

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/providers"
 )
 
 const testAgentKey = "csk_TEST_AGENT_KEY_DO_NOT_PRINT"

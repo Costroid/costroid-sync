@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/output"
-	"github.com/costroid/costroid-sync/providers"
+	"github.com/costroid/costroid/output"
+	"github.com/costroid/costroid/providers"
 )
 
 var exportFormat string

@@ -27,36 +27,70 @@ func (m model) View() string {
 func (m model) fullView() string {
 	return strings.Join([]string{
 		m.headerView(),
-		"",
+		m.ruleLine(),
 		m.vp.View(),
 		"",
 		m.footerView(),
 	}, "\n")
 }
 
-// headerView is the two-line header: brand/context line + panel tab bar.
+// headerView is the two-line header: the brand + current-period summary line,
+// then the dot-rhythm panel nav.
 func (m model) headerView() string {
-	return m.brandLine() + "\n" + m.tabsLine()
+	return m.summaryLine() + "\n" + m.tabsLine()
 }
 
+// brandToken renders the accented identity (mark + braille wordmark + wordmark).
+func (m model) brandToken() string { return m.styles.Accent.Render(m.styles.brand()) }
+
+// brandLine is the money-free identity + context line, safe in every data state
+// (it is reused by the compact and status screens, where metrics may be absent).
 func (m model) brandLine() string {
 	s := m.styles
-	brand := s.Accent.Render(s.mark()+" "+wordmark) + "  " + s.Faint.Render("AI cost dashboard")
-	context := s.Faint.Render("last " + strconv.Itoa(m.data.WindowDays) + " days · local SQLite")
-	return brand + "  ·  " + context
+	sep := s.sepToken()
+	return m.brandToken() +
+		s.Faint.Render(sep+"ai cost"+sep+"last "+strconv.Itoa(m.data.WindowDays)+" days"+sep+"local sqlite")
 }
 
+// summaryLine is the full-dashboard header line: identity plus the current-period
+// readout (MTD, forecast). Money is stable; this only ever shows when data is OK.
+func (m model) summaryLine() string {
+	s := m.styles
+	mo := m.data.Overview
+	seg := []string{m.brandToken(), s.Accent.Render("MTD " + money(mo.MTDCostUSD))}
+	if mo.ForecastUSD != nil {
+		seg = append(seg, "forecast "+money(*mo.ForecastUSD))
+	}
+	seg = append(seg, "last "+strconv.Itoa(m.data.WindowDays)+"d")
+	return strings.Join(seg, s.Faint.Render(s.sepToken()))
+}
+
+// tabsLine is the dot-rhythm panel nav: each panel name carries a leading dot,
+// filled for the active panel and hollow otherwise. Selection is conveyed by the
+// dot shape (filled vs hollow), so it reads with zero color. Jump keys 1-8 stay
+// in the help footer. Lowercase names keep the row inside the 80-column budget.
 func (m model) tabsLine() string {
+	s := m.styles
 	parts := make([]string, len(m.panels))
 	for i, p := range m.panels {
-		label := p.num + " " + p.tab
-		if i == m.active {
-			parts[i] = m.styles.Active.Render(label)
+		active := i == m.active
+		label := s.navDot(active) + strings.ToLower(p.tab)
+		if active {
+			parts[i] = s.Active.Render(label)
 		} else {
-			parts[i] = m.styles.Inactive.Render(label)
+			parts[i] = s.Inactive.Render(label)
 		}
 	}
 	return strings.Join(parts, " ")
+}
+
+// ruleLine is the faint dotted separator between the header and the panel body.
+func (m model) ruleLine() string {
+	w := m.width
+	if w < 1 {
+		w = 1
+	}
+	return m.styles.Faint.Render(strings.Repeat(m.styles.ruleChar(), w))
 }
 
 func (m model) footerView() string {
@@ -66,7 +100,9 @@ func (m model) footerView() string {
 // compactView collapses the dashboard to a single statusline-style summary row
 // when the terminal is usable but smaller than the full layout target.
 func (m model) compactView() string {
-	hint := m.styles.Faint.Render("enlarge to ≥80×24 for panels · ? help · q quit")
+	s := m.styles
+	hint := s.Faint.Render("enlarge to " + s.gte() + strconv.Itoa(fullMinWidth) + s.times() +
+		strconv.Itoa(fullMinHeight) + " for panels" + s.sepToken() + "? help" + s.sepToken() + "q quit")
 	return strings.Join([]string{m.brandLine(), "", m.compactSummary(), "", hint}, "\n")
 }
 
@@ -97,22 +133,23 @@ func (m model) compactSummary() string {
 // statusView is the friendly screen for a missing/empty/unavailable database.
 func (m model) statusView() string {
 	s := m.styles
-	head := s.Accent.Render(s.mark() + " " + wordmark)
+	head := s.Accent.Render(s.brand())
 	var msg string
 	switch m.data.Status {
 	case DataMissingDB, DataEmpty:
-		msg = "No local data yet.\n\nRun  costroid-sync sync  to fetch usage metadata,\n" +
-			"then reopen the dashboard with  costroid-sync tui."
+		msg = "No local data yet.\n\nRun  costroid sync  to fetch usage metadata,\n" +
+			"then reopen the dashboard with  costroid tui."
 	default:
-		msg = "Local database unavailable.\n\nCheck COSTROID_DB or run  costroid-sync sync."
+		msg = "Local database unavailable.\n\nCheck COSTROID_DB or run  costroid sync."
 	}
 	return head + "\n\n" + msg + "\n\n" + s.Faint.Render("q to quit")
 }
 
 // tooSmallView is the single-line message shown below the tiny minimum size.
 func (m model) tooSmallView() string {
-	return "terminal too small (need ≥" +
-		strconv.Itoa(tinyMinWidth) + "×" + strconv.Itoa(tinyMinHeight) + ")"
+	s := m.styles
+	return "terminal too small (need " + s.gte() +
+		strconv.Itoa(tinyMinWidth) + s.times() + strconv.Itoa(tinyMinHeight) + ")"
 }
 
 // lineCount returns the number of physical lines in s (0 for the empty string).

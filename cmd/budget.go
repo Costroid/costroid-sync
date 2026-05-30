@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/costroid/costroid-sync/analysis"
-	"github.com/costroid/costroid-sync/output"
-	"github.com/costroid/costroid-sync/storage"
+	"github.com/costroid/costroid/analysis"
+	"github.com/costroid/costroid/output"
+	"github.com/costroid/costroid/storage"
 )
 
 var (
@@ -46,7 +46,7 @@ func runBudget(cmd *cobra.Command, args []string) error {
 	}
 	budget, err := storage.GetBudget(ctx, db)
 	if errors.Is(err, storage.ErrBudgetNotFound) {
-		fmt.Fprintln(cmd.OutOrStdout(), "No budget configured. Set one with `costroid-sync budget --set 500 --period monthly`.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No budget configured. Set one with `costroid budget --set 500 --period monthly`.")
 		return nil
 	}
 	if err != nil {
