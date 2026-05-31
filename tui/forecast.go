@@ -17,7 +17,7 @@ func forecastBody(d Dashboard, s Styles, _ int) string {
 	f := d.Forecast
 
 	current := money(f.CurrentMonthSpendUSD)
-	if spark := sparkline(s, d.Spark, s.Accent); spark != "" {
+	if spark := sparkline(s, d.Spark, s.meterFill()); spark != "" {
 		current += "  " + spark
 	}
 
@@ -30,7 +30,7 @@ func forecastBody(d Dashboard, s Styles, _ int) string {
 	}
 	if f.ForecastMonthEndUSD > 0 {
 		frac := f.CurrentMonthSpendUSD / f.ForecastMonthEndUSD
-		progress := meter(s, frac, 16, s.Accent) + "  " + pct(frac) + " of forecast"
+		progress := meter(s, frac, 16, s.meterFill()) + "  " + pct(frac) + " of forecast"
 		lines = append(lines, labeled(s, "Progress", labelW, progress))
 	}
 	return strings.Join(lines, "\n")

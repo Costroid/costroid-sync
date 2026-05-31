@@ -11,45 +11,78 @@ const (
 	wordmark  = "costroid"
 )
 
-// Styles is the TUI's lipgloss palette. It is monochrome-first with a single
-// green accent and red reserved for alerts (over-budget / anomalies). Color is
-// gated explicitly by Color so --plain and NO_COLOR produce a fully monochrome,
-// deterministic render without relying on terminal profile auto-detection.
+// Styles is the TUI's lipgloss palette. Signal green is the single shared accent
+// (money / brand mark); each surface adds a cold (dashboard) or warm (sync) ramp
+// used for selection, meters, the sparkline, and severity (T1.6). Color is gated
+// by Tier (mono == --plain / NO_COLOR) so the monochrome fallback is deterministic,
+// and every colored signal is also carried by glyph shape or a text marker, so
+// color is never the sole signal.
 type Styles struct {
-	Color bool
-	ASCII bool
+	Surface surface
+	Tier    ColorTier
+	ASCII   bool
 
-	Title    lipgloss.Style // panel / header titles
-	Faint    lipgloss.Style // secondary labels
-	Accent   lipgloss.Style // single green accent (primary money / brand)
-	Alert    lipgloss.Style // red — alerts only, always paired with a text marker
-	Header   lipgloss.Style // table column headers
-	Active   lipgloss.Style // currently selected panel tab
-	Inactive lipgloss.Style // unselected panel tab
+	Title    lipgloss.Style    // panel / header titles
+	Faint    lipgloss.Style    // secondary labels (ash)
+	Accent   lipgloss.Style    // Signal green — money / brand mark / sync success
+	Alert    lipgloss.Style    // red — over-budget / critical severity / errors
+	Header   lipgloss.Style    // table column headers
+	Active   lipgloss.Style    // selected panel tab — surface ramp primary
+	Inactive lipgloss.Style    // unselected panel tab
+	Ramp     [4]lipgloss.Style // surface ramp shades, dim → bright
 }
 
-// newStyles builds the palette. When color is false every style degrades to a
-// plain (uncolored) variant; structural emphasis (bold) is kept because it does
-// not emit color and golden tests gate on the color flag, not on bold.
-func newStyles(color, ascii bool) Styles {
-	s := Styles{Color: color, ASCII: ascii}
+// newStyles builds the palette for a surface and color tier. Bold structural
+// emphasis is kept in every tier (it emits no color); foregrounds are applied only
+// when the tier supplies a non-empty token, so mono degrades to a fully uncolored,
+// deterministic render.
+func newStyles(surf surface, tier ColorTier, ascii bool) Styles {
+	s := Styles{Surface: surf, Tier: tier, ASCII: ascii}
 	s.Title = lipgloss.NewStyle().Bold(true)
 	s.Header = lipgloss.NewStyle().Bold(true)
-	s.Faint = lipgloss.NewStyle()
-	s.Accent = lipgloss.NewStyle()
-	s.Alert = lipgloss.NewStyle().Bold(true)
-	s.Active = lipgloss.NewStyle().Bold(true)
-	s.Inactive = lipgloss.NewStyle()
-	if color {
-		// ANSI 16-color indices for broad terminal compatibility:
-		// 2 = green (accent), 1 = red (alert), 8 = bright-black (faint).
-		s.Faint = s.Faint.Foreground(lipgloss.Color("8"))
-		s.Accent = s.Accent.Foreground(lipgloss.Color("2"))
-		s.Alert = s.Alert.Foreground(lipgloss.Color("1"))
-		s.Active = s.Active.Foreground(lipgloss.Color("2"))
-		s.Inactive = s.Inactive.Foreground(lipgloss.Color("8"))
-	}
+	s.Faint = fg(faintColor[tier])
+	s.Accent = fg(signalColor[tier])
+	s.Alert = fg(alertColor[tier]).Bold(true)
+	s.Ramp = rampStyles(surf, tier)
+	s.Active = s.Ramp[2].Bold(true) // selection also reads from the filled nav dot
+	s.Inactive = s.Faint
 	return s
+}
+
+// rampStyles builds the four surface-ramp shade styles for the tier (all plain in
+// mono).
+func rampStyles(surf surface, tier ColorTier) [4]lipgloss.Style {
+	tokens := rampTokens(surf, tier)
+	var out [4]lipgloss.Style
+	for i, t := range tokens {
+		out[i] = fg(t)
+	}
+	return out
+}
+
+// meterFill is the surface ramp shade used for meters, spend bars, the sparkline,
+// and the sync dot-progress strip. Money keeps Accent (Signal green); this carries
+// the cold/warm surface identity. The filled length alone conveys the value, so the
+// color is never the sole signal.
+func (s Styles) meterFill() lipgloss.Style { return s.Ramp[2] }
+
+// sevStyle maps a 0..8 severity level to a ramp shade (dim → bright), with the
+// critical top tier using the alert treatment. Severity also reads by braille dot
+// density (severityGlyph) and the row's numeric deviation, so this is never the
+// sole signal.
+func (s Styles) sevStyle(level int) lipgloss.Style {
+	switch {
+	case level >= 8:
+		return s.Alert
+	case level >= 6:
+		return s.Ramp[3]
+	case level >= 4:
+		return s.Ramp[2]
+	case level >= 2:
+		return s.Ramp[1]
+	default:
+		return s.Ramp[0]
+	}
 }
 
 // mark returns the brand glyph (UTF-8 or ASCII fallback).

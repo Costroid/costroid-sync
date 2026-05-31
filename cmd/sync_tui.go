@@ -68,7 +68,8 @@ func runSyncTUI(cmd *cobra.Command) error {
 	defer progCancel()
 
 	acc := &syncAccumulator{}
-	opts := tui.Options{Color: os.Getenv("NO_COLOR") == "", ASCII: !utf8Locale()}
+	tier := tui.ResolveTier(false, os.Getenv("NO_COLOR") != "", os.Getenv("COLORTERM"), os.Getenv("TERM"))
+	opts := tui.Options{Tier: tier, ASCII: !utf8Locale()}
 	completed, err := tui.RunSync(progCtx, opts, buildSyncStages(plans, workCtx, acc))
 	if err != nil {
 		return fmt.Errorf("sync view failed to start: %w", err)

@@ -13,13 +13,13 @@ import (
 // mark + plain wordmark in ASCII with no braille leaking (the layout must hold
 // without braille — design-language §6).
 func TestBrand_BrailleAndASCIIFallback(t *testing.T) {
-	utf := newStyles(true, false).brand()
+	utf := newStyles(surfaceCold, ansi16, false).brand()
 	for _, want := range []string{glyphMark, brailleWordmark, wordmark} {
 		if !strings.Contains(utf, want) {
 			t.Errorf("utf-8 brand missing %q in %q", want, utf)
 		}
 	}
-	asc := newStyles(false, true).brand()
+	asc := newStyles(surfaceCold, mono, true).brand()
 	if !strings.Contains(asc, wordmark) || !strings.Contains(asc, asciiMark) {
 		t.Errorf("ascii brand = %q, want %q + %q", asc, asciiMark, wordmark)
 	}
@@ -33,7 +33,7 @@ func TestBrand_BrailleAndASCIIFallback(t *testing.T) {
 // TestHeader_BrailleInNormalMode renders the full dashboard with UTF-8 styling
 // and confirms the braille mark + wordmark survive into the painted frame.
 func TestHeader_BrailleInNormalMode(t *testing.T) {
-	m := newModel(demoDashboard(refTime()), Options{Color: true, ASCII: false})
+	m := newModel(demoDashboard(refTime()), Options{Tier: ansi16, ASCII: false})
 	nm, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
 	out := stripANSI(nm.(model).View())
 	for _, want := range []string{glyphMark, brailleWordmark} {
@@ -66,7 +66,7 @@ func TestNav_SelectedStateVisibleWithoutColor(t *testing.T) {
 }
 
 func TestMeter_FillClampAndASCII(t *testing.T) {
-	s := newStyles(false, true) // ascii
+	s := newStyles(surfaceCold, mono, true) // ascii
 	cases := map[float64]string{0: "[----]", 0.5: "[##--]", 1: "[####]", 1.5: "[####]"}
 	for frac, want := range cases {
 		if got := stripANSI(meter(s, frac, 4, s.Accent)); got != want {
@@ -76,7 +76,7 @@ func TestMeter_FillClampAndASCII(t *testing.T) {
 }
 
 func TestMeter_UTF8Blocks(t *testing.T) {
-	s := newStyles(false, false) // utf-8, color off
+	s := newStyles(surfaceCold, mono, false) // utf-8, color off
 	got := stripANSI(meter(s, 0.5, 4, s.Accent))
 	if !strings.Contains(got, meterFull) {
 		t.Errorf("utf-8 meter missing full block: %q", got)
@@ -87,12 +87,12 @@ func TestMeter_UTF8Blocks(t *testing.T) {
 }
 
 func TestSparkline_RampEmptyAndASCII(t *testing.T) {
-	utf := newStyles(false, false)
+	utf := newStyles(surfaceCold, mono, false)
 	got := []rune(stripANSI(sparkline(utf, []float64{0, 5, 10}, utf.Accent)))
 	if len(got) != 3 || got[0] != sparkLevels[0] || got[2] != sparkLevels[len(sparkLevels)-1] {
 		t.Errorf("sparkline ramp = %q", string(got))
 	}
-	if sparkline(newStyles(false, true), []float64{1, 2, 3}, newStyles(false, true).Accent) != "" {
+	if sparkline(newStyles(surfaceCold, mono, true), []float64{1, 2, 3}, newStyles(surfaceCold, mono, true).Accent) != "" {
 		t.Error("ascii sparkline must be empty (numbers are shown instead)")
 	}
 	if sparkline(utf, nil, utf.Accent) != "" {
@@ -101,7 +101,7 @@ func TestSparkline_RampEmptyAndASCII(t *testing.T) {
 }
 
 func TestDotStrip_RealFillAndClamp(t *testing.T) {
-	s := newStyles(false, true) // ascii: filled "*", hollow "."
+	s := newStyles(surfaceCold, mono, true) // ascii: filled "*", hollow "."
 	cases := []struct {
 		total, filled int
 		want          string
@@ -139,7 +139,7 @@ func TestDailySparkSeries_Buckets(t *testing.T) {
 // TestOverviewBody_SparklineInUTF8 proves the recent-spend sparkline renders in
 // normal mode (using a level unique to the vertical sparkline, not the meter).
 func TestOverviewBody_SparklineInUTF8(t *testing.T) {
-	s := newStyles(false, false) // utf-8, color off
+	s := newStyles(surfaceCold, mono, false) // utf-8, color off
 	got := stripANSI(overviewBody(demoDashboard(refTime()), s, 80))
 	has := false
 	for _, r := range []rune("▂▃▄▅▆▇") { // mid sparkline levels, not used by the meter
@@ -165,7 +165,7 @@ func TestView_PlainFallbackASCIISafe(t *testing.T) {
 		all.WriteByte('\n')
 	}
 	out := all.String()
-	for _, glyph := range []string{glyphMark, brailleWordmark, meterFull, glyphNavActive, glyphRule, "▁", "▂", "▄", "▇"} {
+	for _, glyph := range []string{glyphMark, brailleWordmark, meterFull, glyphNavActive, glyphRule, "▁", "▂", "▄", "▇", "⡿", "⣿"} {
 		if strings.Contains(out, glyph) {
 			t.Errorf("ASCII fallback leaked non-ASCII glyph %q", glyph)
 		}
@@ -190,8 +190,8 @@ func firstNonASCII(s string) string {
 // TestSepToken_GatedByMode pins the punctuation gating: UTF-8 keeps the dot
 // rhythm, --plain uses pure ASCII (no middle dot, ellipsis, ×, or ≥).
 func TestSepToken_GatedByMode(t *testing.T) {
-	utf := newStyles(true, false)
-	asc := newStyles(false, true)
+	utf := newStyles(surfaceCold, ansi16, false)
+	asc := newStyles(surfaceCold, mono, true)
 	cases := []struct {
 		name             string
 		utfVal, asciiVal string
@@ -254,7 +254,7 @@ func TestPlainRender_SyncIsPureASCII(t *testing.T) {
 	nme, _ := me.Update(stageDoneMsg{index: 0, outcome: StageOutcome{State: StageError, Detail: "request failed"}})
 	b.WriteString(stripANSI(nme.(syncModel).View()))
 
-	mt := newSyncModel([]Stage{stubStage("a")}, Options{Color: false, ASCII: true})
+	mt := newSyncModel([]Stage{stubStage("a")}, Options{ASCII: true})
 	nmt, _ := mt.Update(tea.WindowSizeMsg{Width: 10, Height: 2})
 	b.WriteString(stripANSI(nmt.(syncModel).View()))
 

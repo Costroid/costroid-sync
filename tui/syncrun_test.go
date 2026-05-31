@@ -24,7 +24,7 @@ func stubStageAction(label, action string) Stage {
 // View renders the full checklist. Color off + ASCII on keeps output stable.
 func sizedSyncModel(t *testing.T, stages []Stage) syncModel {
 	t.Helper()
-	m := newSyncModel(stages, Options{Color: false, ASCII: true})
+	m := newSyncModel(stages, Options{ASCII: true})
 	nm, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	return nm.(syncModel)
 }

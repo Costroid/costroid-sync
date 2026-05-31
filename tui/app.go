@@ -22,11 +22,12 @@ const (
 	tinyMinHeight = 3
 )
 
-// Options configures a TUI run. Color/ASCII are resolved by the caller from
-// --plain, NO_COLOR, and the locale. NoAnimation is accepted and honored as a
-// documented no-op in T1.2 (the dashboard has no animation by rule).
+// Options configures a TUI run. Tier (the resolved color capability) and ASCII are
+// resolved by the caller from --plain, NO_COLOR, COLORTERM/TERM, and the locale
+// (see ResolveTier). NoAnimation is accepted and honored as a documented no-op in
+// T1.2 (the dashboard has no animation by rule).
 type Options struct {
-	Color       bool
+	Tier        ColorTier
 	ASCII       bool
 	NoAnimation bool
 	Now         time.Time
@@ -76,7 +77,7 @@ type model struct {
 func newModel(d Dashboard, opts Options) model {
 	return model{
 		data:   d,
-		styles: newStyles(opts.Color, opts.ASCII),
+		styles: newStyles(surfaceCold, opts.Tier, opts.ASCII),
 		keys:   newKeyMap(opts.ASCII),
 		help:   newHelp(opts.ASCII),
 		vp:     viewport.New(0, 0),

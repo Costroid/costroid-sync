@@ -20,7 +20,7 @@ func tabBarWidth(m model) int {
 // deterministic, metadata-only fixture. ANSI is stripped so the comparison is
 // stable regardless of the terminal color profile.
 func TestOverviewBody_Golden(t *testing.T) {
-	s := newStyles(false, true)
+	s := newStyles(surfaceCold, mono, true)
 	got := stripANSI(overviewBody(demoDashboard(refTime()), s, 80))
 	// ASCII mode: the sparkline is omitted (numbers shown instead), the budget
 	// meter renders as a bracketed [####----] bar, and the anomaly cell carries a
@@ -39,7 +39,7 @@ func TestOverviewBody_Golden(t *testing.T) {
 }
 
 func TestProvidersBody_Content(t *testing.T) {
-	s := newStyles(false, true)
+	s := newStyles(surfaceCold, mono, true)
 	got := stripANSI(providersBody(demoDashboard(refTime()), s, 80))
 	// Core metadata columns plus the new share + ASCII spend-meter pattern.
 	for _, sub := range []string{
@@ -53,7 +53,7 @@ func TestProvidersBody_Content(t *testing.T) {
 }
 
 func TestHistoryBody_Content(t *testing.T) {
-	s := newStyles(false, true)
+	s := newStyles(surfaceCold, mono, true)
 	got := stripANSI(historyBody(demoDashboard(refTime()), s, 80))
 	// Newest day first, with date + money + token columns and an ASCII spend meter.
 	for _, sub := range []string{
@@ -71,7 +71,7 @@ func TestHistoryBody_Content(t *testing.T) {
 }
 
 func TestTrendBody_Content(t *testing.T) {
-	s := newStyles(false, true)
+	s := newStyles(surfaceCold, mono, true)
 	got := stripANSI(trendBody(demoDashboard(refTime()), s, 80))
 	// Both interval sections, the change column, a signed change, and "n/a" for the
 	// first period (no prior to compare against).
@@ -167,21 +167,21 @@ func TestView_MetadataOnly(t *testing.T) {
 }
 
 func TestStyles_ColorGating(t *testing.T) {
-	on := newStyles(true, false)
-	off := newStyles(false, false)
+	on := newStyles(surfaceCold, ansi16, false)
+	off := newStyles(surfaceCold, mono, false)
 	if on.Accent.GetForeground() == off.Accent.GetForeground() {
-		t.Error("accent foreground not gated by color flag")
+		t.Error("accent foreground not gated by color tier")
 	}
 	if on.Alert.GetForeground() == off.Alert.GetForeground() {
-		t.Error("alert foreground not gated by color flag")
+		t.Error("alert foreground not gated by color tier")
 	}
 }
 
 func TestStyles_ASCIIMark(t *testing.T) {
-	if newStyles(true, true).mark() != asciiMark {
-		t.Errorf("ascii mark = %q, want %q", newStyles(true, true).mark(), asciiMark)
+	if newStyles(surfaceCold, ansi16, true).mark() != asciiMark {
+		t.Errorf("ascii mark = %q, want %q", newStyles(surfaceCold, ansi16, true).mark(), asciiMark)
 	}
-	if newStyles(true, false).mark() != glyphMark {
-		t.Errorf("utf8 mark = %q, want %q", newStyles(true, false).mark(), glyphMark)
+	if newStyles(surfaceCold, ansi16, false).mark() != glyphMark {
+		t.Errorf("utf8 mark = %q, want %q", newStyles(surfaceCold, ansi16, false).mark(), glyphMark)
 	}
 }

@@ -50,7 +50,7 @@ func (m syncModel) View() string {
 func (m syncModel) syncHeader() string {
 	s := m.styles
 	brand := s.Accent.Render(s.brand()) + "  " + s.Faint.Render("syncing usage metadata")
-	dots := dotStrip(s, len(m.rows), m.finishedStages(), s.Accent)
+	dots := dotStrip(s, len(m.rows), m.finishedStages(), s.meterFill())
 	return brand + s.sepToken() + dots + "  " + s.Faint.Render(m.progressCount())
 }
 

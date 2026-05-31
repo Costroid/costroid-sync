@@ -28,7 +28,7 @@ func providersBody(d Dashboard, s Styles, _ int) string {
 			strconv.Itoa(p.TotalTokens),
 			strconv.Itoa(p.Records),
 			pct(share),
-			meter(s, share, 10, s.Accent),
+			meter(s, share, 10, s.meterFill()),
 		}
 	}
 	return table(s, cols, rows)

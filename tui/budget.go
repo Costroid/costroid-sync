@@ -17,7 +17,7 @@ func budgetBody(d Dashboard, s Styles, _ int) string {
 	const labelW = 12
 	const meterW = 16
 	b := d.Budget
-	fill := s.Accent
+	fill := s.meterFill()
 	state := "on track"
 	if b.IsOverBudget {
 		fill = s.Alert

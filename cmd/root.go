@@ -58,7 +58,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 
 	noColor := os.Getenv("NO_COLOR") != ""
 	return tui.Run(cmd.Context(), tui.Options{
-		Color:       !rootPlain && !noColor,
+		Tier:        tui.ResolveTier(rootPlain, noColor, os.Getenv("COLORTERM"), os.Getenv("TERM")),
 		ASCII:       rootPlain || !utf8Locale(),
 		NoAnimation: rootNoAnimation,
 	})

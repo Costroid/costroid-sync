@@ -31,7 +31,7 @@ func historyBody(d Dashboard, s Styles, _ int) string {
 			h.Date.Format("2006-01-02"),
 			money(h.CostUSD),
 			strconv.Itoa(h.TotalTokens),
-			meter(s, frac, 10, s.Accent),
+			meter(s, frac, 10, s.meterFill()),
 		}
 	}
 	return table(s, cols, rows)
