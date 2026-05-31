@@ -15,7 +15,7 @@ func runeKey(s string) tea.KeyMsg { return tea.KeyMsg{Type: tea.KeyRunes, Runes:
 // viewport is laid out and View() renders the full dashboard.
 func sizedModel(t *testing.T, d Dashboard, w, h int) model {
 	t.Helper()
-	m := newModel(d, Options{Color: false, ASCII: true})
+	m := newModel(d, Options{ASCII: true})
 	nm, _ := m.Update(tea.WindowSizeMsg{Width: w, Height: h})
 	return nm.(model)
 }

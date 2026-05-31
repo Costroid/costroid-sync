@@ -75,14 +75,14 @@ type syncModel struct {
 
 func newSyncModel(stages []Stage, opts Options) syncModel {
 	sp := spinner.New()
-	styles := newStyles(opts.Color, opts.ASCII)
+	styles := newStyles(surfaceWarm, opts.Tier, opts.ASCII)
 	if opts.ASCII {
 		sp.Spinner = spinner.Line // ASCII frames: | / - \
 	} else {
 		sp.Spinner = spinner.MiniDot // braille dot, matches the dot identity
 	}
-	if opts.Color {
-		sp.Style = styles.Accent
+	if opts.Tier != mono {
+		sp.Style = styles.meterFill() // warm ramp — the in-flight process voice
 	}
 	rows := make([]stageRow, len(stages))
 	runs := make([]func() StageOutcome, len(stages))

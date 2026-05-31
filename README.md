@@ -187,7 +187,7 @@ Overview
   Month to date   $38.00   ▁▂▃▄▅▆▇
   Forecast        $99.39
   Budget          ███████▎····  60% (monthly)
-  Anomalies       1  ALERT  █
+  Anomalies       1  ALERT  ⡟
   Last sync       4h ago
 ```
 
@@ -195,11 +195,15 @@ Every local feature is reachable from the dashboard: the **History** panel shows
 spend, **Trend** shows weekly and monthly rollups, and Forecast, Budget, Anomalies, savings
 (under Export hints), and per-provider/model totals each get a panel.
 
-The dashboard uses a monochrome-first dot/braille identity: the selected panel is marked by a
-filled dot (`●`) rather than color alone, spend shares and budgets render as braille/block meters,
-and a static sparkline shows recent daily spend. Under `--plain`, `NO_COLOR`, or a non-UTF-8
-locale it degrades to ASCII (`*`/`.` nav dots, `[####----]` meters, numbers in place of the
-sparkline) so the layout reads with zero color. Money values are always stable — never animated.
+The dashboard and `sync --tui` share a dot/braille identity but read in distinct hues: the
+dashboard uses a **cold** cyan-blue palette and `sync --tui` a **warm** coral-amber one, with
+Signal green reserved for money and the brand mark on both. Color is layered on top of shape,
+never instead of it — the selected panel is marked by a filled dot (`●`), spend shares and budgets
+render as braille/block meters, anomaly severity as escalating braille dot-density, and a static
+sparkline shows recent daily spend. Truecolor only enhances: the palette degrades
+truecolor → 256 → 16-color → monochrome, and under `--plain`, `NO_COLOR`, or a non-UTF-8 locale it
+falls back to ASCII (`*`/`.` nav dots, `[####----]` meters, numbers in place of the sparkline) so
+the layout reads with zero color. Money values are always stable — never animated.
 
 Like `statusline`, it reads the local SQLite database **read-only** and makes **no** network
 request, provider API call, or provider sync — run `costroid sync` separately. It changes no

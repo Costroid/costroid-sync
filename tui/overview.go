@@ -18,7 +18,7 @@ func overviewBody(d Dashboard, s Styles, _ int) string {
 	var lines []string
 
 	mtd := s.Accent.Render(money(m.MTDCostUSD))
-	if spark := sparkline(s, d.Spark, s.Accent); spark != "" {
+	if spark := sparkline(s, d.Spark, s.meterFill()); spark != "" {
 		mtd += "  " + spark
 	}
 	lines = append(lines, labeled(s, "Month to date", labelW, mtd))
@@ -45,7 +45,7 @@ func overviewBudget(d Dashboard, s Styles, meterW int) string {
 	if m.BudgetPercent == nil {
 		return s.Faint.Render("not set")
 	}
-	fill := s.Accent
+	fill := s.meterFill()
 	if m.OverBudget {
 		fill = s.Alert
 	}

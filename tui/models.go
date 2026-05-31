@@ -29,7 +29,7 @@ func modelsBody(d Dashboard, s Styles, _ int) string {
 			money(m.CostUSD),
 			strconv.Itoa(m.TotalTokens),
 			strconv.Itoa(m.Records),
-			meter(s, frac, 10, s.Accent),
+			meter(s, frac, 10, s.meterFill()),
 		}
 	}
 	return table(s, cols, rows)

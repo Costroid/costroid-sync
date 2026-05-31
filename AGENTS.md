@@ -1,493 +1,220 @@
-# AGENTS.md — Costroid™
+# AGENTS.md - Costroid
 
-> **This file is the single source of truth for all AI coding agents working on this project.**
-> Read this ENTIRE file before writing any code.
-
----
+This is the canonical instruction file for coding agents in `costroid`, the Go CLI repo.
+Keep it short. Add durable rules only; do not paste plans, chat transcripts, long file trees, or launch copy here.
 
 ## Project Identity
 
-- **Product:** Costroid™ — Open-source AI cost tracking CLI (Go) + paid team dashboard (Next.js)
-- **What it does:** Tracks, normalizes, forecasts, and alerts on AI/LLM spending across multiple providers using metadata only.
-- **What it does NOT do:** Observability, tracing, prompt debugging, proxy/gateway, or ANY processing of prompt/completion content.
-- **Target:** Open-source CLI for individual developers (GitHub primary). Paid cloud dashboard for teams (costroid.com + Azure/AWS Marketplace).
-- **Solo developer project.** Simplicity and shipping speed are paramount. Do not over-engineer.
+- Product: Costroid, an open-source Go CLI for AI/LLM cost tracking, plus a separate paid cloud dashboard for teams.
+- This repo: the local-first CLI. It fetches provider billing/usage metadata, normalizes it, stores it in local SQLite, analyzes it locally, and optionally pushes normalized metadata to Costroid Cloud.
+- Not Costroid: observability, tracing, prompt debugging, model gateway, proxy, automatic routing, Kubernetes/cloud remediation, or prompt/content processing.
+- Principle: solo-developer project; prefer simple, auditable, shippable code over abstraction.
 
----
+## Metadata-Only Rule
 
-## The One Unbreakable Rule
+NEVER READ, STORE, LOG, CACHE, TRANSMIT, DISPLAY, EXPORT, OR PROCESS PROMPT OR COMPLETION CONTENT.
 
-```
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║   NEVER READ, STORE, LOG, CACHE, TRANSMIT, OR PROCESS       ║
-║   ANY PROMPT OR COMPLETION CONTENT FROM ANY LLM.            ║
-║                                                              ║
-║   We handle METADATA ONLY:                                   ║
-║   ✅ token counts    ✅ model names     ✅ timestamps        ║
-║   ✅ cost amounts    ✅ resource IDs    ✅ team/project tags  ║
-║                                                              ║
-║   ❌ prompt text     ❌ completion text  ❌ message arrays   ║
-║   ❌ system prompts  ❌ function args    ❌ tool call text   ║
-║                                                              ║
-║   If you are writing a function that COULD receive prompt    ║
-║   data (e.g., parsing a full API response), you MUST         ║
-║   explicitly destructure and extract ONLY the metadata       ║
-║   fields, and discard everything else.                       ║
-║                                                              ║
-║   A violation of this rule is a critical security bug.       ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-```
+Allowed data:
 
-### Enforcement Pattern
+- provider names and slugs
+- model, SKU, product, service, meter, and resource identifiers
+- token counts and usage quantities
+- timestamps and sync freshness
+- cost amounts, currency, unit price, discounts
+- safe project, workspace, account, API key, team, and org IDs
+- source hashes and deduplication IDs
 
-```typescript
-// ✅ CORRECT — explicitly extract only metadata
-function processOpenAIUsage(rawData: any): CostRecord {
-  return {
-    model: rawData.model,
-    prompt_tokens: rawData.usage?.prompt_tokens ?? 0,
-    completion_tokens: rawData.usage?.completion_tokens ?? 0,
-    total_tokens: rawData.usage?.total_tokens ?? 0,
-    cost_usd: calculateCost(rawData.model, rawData.usage),
-    recorded_at: rawData.created_at,
-  };
-}
-// ❌ WRONG: return { ...rawData };       // NEVER spread raw API responses
-// ❌ WRONG: console.log(response.data);  // May contain prompts
-```
+Forbidden data:
 
-### Enforcement Pattern (Go — CLI)
+- prompts, completions, messages, content, system prompts, user/assistant text
+- tool call text, function arguments, input/output text fields
+- request bodies, response bodies, raw provider payloads
+- traces, spans, logs, diagnostic dumps, source code, repository contents
+- free-form labels or user/system labels that may contain user text
+- provider credentials, OAuth tokens, service-account private keys, authorization headers
 
-```go
-// ✅ CORRECT — explicitly extract only metadata
-func processOpenAIUsage(raw map[string]interface{}) NormalizedCostRecord {
-    return NormalizedCostRecord{
-        Model:            raw["model"].(string),
-        PromptTokens:     int(raw["input_tokens"].(float64)),
-        CompletionTokens: int(raw["output_tokens"].(float64)),
-        CostUSD:          raw["cost"].(float64),
-        RecordedAt:       raw["date"].(string),
-    }
-}
-// ❌ WRONG: json.Unmarshal(body, &fullResponse)  // May contain prompts
-// ❌ WRONG: fmt.Println(string(body))             // Logs raw API response
-```
+Implementation rules:
 
----
+- Explicitly extract known metadata fields from provider/API responses; never spread or persist raw responses.
+- Never log raw HTTP bodies, raw database rows containing secrets, raw provider errors, or full request payloads.
+- Every ingestion/provider path must have a test containing poison prompt-like fields and proving only metadata survives or the payload is rejected.
+- CSV upload paths reject prompt-like columns loudly before parsing; do not silently drop forbidden columns.
 
-## Tech Stack — Exact Choices
+## Current Repo Shape
 
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| **Runtime** | Node.js 20+ | LTS only — web dashboard |
-| **Runtime (CLI)** | Go 1.24+ | CLI sync agent — single binary, zero npm deps |
-| **Framework** | Next.js 14+ (App Router) | `app/` directory only, NOT `pages/` |
-| **Language** | TypeScript (strict mode) | `"strict": true` in tsconfig |
-| **Styling** | Tailwind CSS 3+ | No custom CSS except globals.css |
-| **UI Components** | shadcn/ui | Install on demand |
-| **Charts** | Recharts | Dashboard visualizations |
-| **Icons** | Lucide React | Consistent with shadcn |
-| **Database** | Supabase (PostgreSQL) | Supabase JS SDK for queries |
-| **Auth** | Supabase Auth | Email/password + OAuth: Google, GitHub, **Azure/Microsoft** |
-| **Query Layer** | Supabase JS SDK v2 | `@supabase/supabase-js` |
-| **Server State** | TanStack Query v5 | `@tanstack/react-query` |
-| **API Calls** | Native `fetch` | No axios |
-| **Background Jobs** | Vercel Cron | Analytics only (forecasting + anomaly detection). NO provider API calls. |
-| **Validation** | Zod | All inputs and env vars |
-| **Email** | Resend (NOT SendGrid — free tier killed May 2025) | Alerts and transactional, React Email for Next.js |
-| **JWT Validation** | jose | Azure webhook auth |
-| **Testing** | Vitest + React Testing Library | All ingestion functions tested |
-| **Linting** | ESLint + Prettier | Pre-commit via husky + lint-staged |
-| **Package Manager** | pnpm | NOT npm, NOT yarn. Pin exact versions (no ^ or ~). Run `pnpm audit` before every deploy. |
+- `cmd/`: Cobra commands only. Parse flags, call domain logic, format output. No business logic.
+- `providers/`: provider API/export readers and normalization. Use `context.WithTimeout` for HTTP calls and safe/friendly errors.
+- `storage/`: SQLite persistence at `~/.costroid/costroid.db`, plus read-only helpers.
+- `analysis/`: local forecasting, anomaly detection, savings, budgets, aggregation, statusline summaries.
+- `output/`: table, CSV, JSON, FOCUS, Markdown, and statusline formatting.
+- `tui/`: Bubble Tea dashboard and sync views. Dashboard is read-only over local SQLite.
+- `client/`: optional cloud push of normalized metadata only.
+- `docs/providers/`: provider setup docs. Keep README concise and link out.
 
-### Do NOT Use
+Supported providers are OpenAI, Anthropic, GitHub Copilot, Google Gemini CSV, Azure OpenAI, AWS Bedrock, and GCP Billing. Do not add pre-launch providers unless explicitly approved.
 
-- ❌ Prisma, Drizzle, or any ORM
-- ❌ tRPC
-- ❌ Redux, Zustand, Jotai, SWR
-- ❌ Express.js, Fastify, FastAPI, Flask
-- ❌ MongoDB, DynamoDB
-- ❌ Docker in development
-- ❌ Monorepo tools (Turborepo, Nx)
-- ❌ axios
+## Approved Stack
 
-### Go CLI Dependencies (costroid)
+Runtime: Go 1.24+. Direct Go dependencies are:
 
-| Package | Purpose |
-|---------|---------|
-| `github.com/spf13/cobra` | CLI framework (commands, flags, help) |
-| `github.com/mattn/go-sqlite3` | Local SQLite storage (~/.costroid/costroid.db) |
-| `github.com/charmbracelet/lipgloss` | Terminal table styling and colors |
-| `github.com/charmbracelet/bubbletea` | TUI event loop — the default fullscreen dashboard (T1.2, bare `costroid`) and `sync --tui` (T1.3); pinned `v1.3.10`, approved in `DECISIONS.md` ADR-011 |
-| `github.com/charmbracelet/bubbles` | Scoped TUI components — read-only `table`/`viewport`/`help`/`key`/`paginator` (T1.2) plus `spinner` for real sync stages (T1.3); pinned `v0.21.0`, ADR-011/ADR-013 |
-| `github.com/mattn/go-isatty` | TTY detection for the TUI's non-interactive refusal (already in the module graph) |
-| Standard library only for: | `net/http` (API calls), `encoding/json`, `fmt`, `os`, `context`, `crypto/sha256` |
+- `github.com/spf13/cobra`
+- `github.com/mattn/go-sqlite3`
+- `github.com/charmbracelet/lipgloss`
+- `github.com/charmbracelet/bubbletea v1.3.10`
+- `github.com/charmbracelet/bubbles v0.21.0`
+- `github.com/mattn/go-isatty`
 
-**Do NOT add** Go DI frameworks, Go ORMs (GORM, ent), or Go web frameworks (gin, echo). Use standard library + the packages above.
+Standard library is preferred for HTTP, JSON, crypto, context, filesystem, and formatting.
 
-**T1 dependency rule:** T1.1 statusline MVP must use the existing dependency set; it should be deterministic stdout over local SQLite and require no Bubble Tea dependency. Bubble Tea/Bubbles were not approved for T1.1. They are approved **only** for the gated TUI work via `DECISIONS.md` ADR-011 (T1.2 fullscreen + pre-approved T1.3 sync TUI): `bubbletea v1.3.10` and a **scoped** `bubbles v0.21.0` (read-only components only — `textinput`/`textarea`/`filepicker`/`list` are forbidden; `spinner`/`progress` are T1.3-only). Any further Go dependency still requires a new ADR/dependency review per `MAINTAINABILITY.md`.
+Do not add Go DI frameworks, ORMs, web frameworks, axios-like HTTP wrappers, or generic utility libraries. Any new dependency or architecture change requires an ADR-style note in this file or the target repo's decision record before installation.
 
----
+TUI dependency scope:
 
-## Project Structure
+- Bubble Tea/Bubbles are approved only for the shipped dashboard and `sync --tui`.
+- Bubbles allowed components: read-only table/viewport/help/key/paginator, plus spinner/progress only for real sync stages.
+- Bubbles forbidden components: textinput, textarea, filepicker, list, or anything introducing free-form text/filesystem input.
 
-### Cloud Dashboard (repo: costroid/costroid-cloud — Phase 3)
+## CLI Behavior
 
-```
-costroid-cloud/
-├── AGENTS.md
-├── spec.md
-├── SKILL.md
-├── .env.local                     # NEVER commit
-├── .env.example
-├── .gitignore
-├── next.config.mjs
-├── tailwind.config.ts
-├── tsconfig.json
-├── vitest.config.ts
-├── package.json
-├── pnpm-lock.yaml
-│
-├── app/
-│   ├── layout.tsx                 # Root layout (QueryClientProvider, Supabase)
-│   ├── page.tsx                   # Landing / marketing page
-│   │
-│   ├── marketplace/
-│   │   └── azure/
-│   │       └── page.tsx           # Azure Marketplace SSO landing page (see SKILL.md)
-│   │
-│   ├── error/
-│   │   └── page.tsx               # Error display page
-│   │
-│   ├── (auth)/
-│   │   ├── login/page.tsx
-│   │   ├── signup/page.tsx
-│   │   └── callback/route.ts      # Supabase OAuth callback
-│   │
-│   ├── dashboard/
-│   │   ├── layout.tsx             # Dashboard shell (sidebar + header + auth guard)
-│   │   ├── page.tsx               # Main dashboard (/dashboard)
-│   │   ├── providers/page.tsx     # /dashboard/providers
-│   │   ├── models/page.tsx        # /dashboard/models
-│   │   ├── teams/page.tsx         # /dashboard/teams
-│   │   ├── forecasts/page.tsx     # /dashboard/forecasts
-│   │   ├── budgets/page.tsx       # /dashboard/budgets
-│   │   ├── anomalies/page.tsx     # /dashboard/anomalies
-│   │   ├── alerts/page.tsx        # /dashboard/alerts
-│   │   ├── savings/page.tsx       # /dashboard/savings
-│   │   ├── transparency/page.tsx  # /dashboard/transparency ("What We Collected")
-│   │   ├── upload/page.tsx        # /dashboard/upload (CSV upload)
-│   │   ├── audit-log/page.tsx     # /dashboard/audit-log (Team+)
-│   │   └── settings/page.tsx      # /dashboard/settings (agent key display)
-│   │
-│   └── api/
-│       ├── marketplace/azure/
-│       │   ├── resolve/route.ts   # Exchange marketplace token → subscription details
-│       │   └── activate/route.ts  # Activate subscription + provision customer
-│       ├── webhooks/
-│       │   ├── azure-marketplace/route.ts  # Azure SaaS lifecycle events
-│       │   └── aws-marketplace/route.ts
-│       ├── ingest/route.ts        # SDK metadata ingestion (post-launch backlog)
-│       ├── orgs/[orgId]/
-│       │   ├── costs/route.ts
-│       │   ├── providers/route.ts
-│       │   ├── budgets/route.ts
-│       │   ├── forecasts/route.ts
-│       │   ├── agent-sync/route.ts    # Receives data from Go CLI (POST)
-│       │   ├── upload/route.ts        # CSV upload (POST)
-│       │   ├── transparency/route.ts  # "What We Collected" (GET)
-│       │   └── audit-log/route.ts     # Data audit log (GET, Team+)
-│       └── cron/
-│           ├── run-forecasts/route.ts        # Analytics cron — NO provider API calls
-│           └── detect-anomalies/route.ts
-│
-├── components/
-│   ├── ui/                        # shadcn/ui (auto-generated)
-│   ├── dashboard/                 # Dashboard widgets
-│   ├── providers/                 # Provider connection UI
-│   └── layout/                    # Sidebar, header, plan badge
-│
-├── lib/
-│   ├── supabase/
-│   │   ├── client.ts              # Browser client (anon key)
-│   │   ├── server.ts              # Server client (cookies-based, for RSC)
-│   │   ├── admin.ts               # Service role client (cron/webhooks only)
-│   │   └── middleware.ts          # Auth middleware helper
-│   ├── providers/
-│   │   ├── types.ts               # NormalizedCostRecord, ProviderConfig
-│   │   ├── csv-parsers.ts         # Parse OpenAI/Anthropic CSV exports for upload feature
-│   │   └── normalizer.ts          # Normalize CSV data to unified schema
-│   │   # NOTE: Provider API calls (OpenAI, Anthropic, etc.) live in the Go CLI repo,
-│   │   # NOT here. The cloud dashboard only receives pre-normalized data via agent-sync.
-│   ├── forecasting/
-│   │   ├── ema.ts
-│   │   ├── linear-trend.ts
-│   │   └── anomaly-detector.ts
-│   ├── marketplace/
-│   │   ├── azure-auth.ts
-│   │   ├── azure-fulfillment.ts
-│   │   ├── azure-webhook-auth.ts
-│   │   ├── provisioning.ts
-│   │   └── aws-metering.ts
-│   ├── notifications/
-│   │   ├── slack.ts
-│   │   ├── email.ts
-│   │   └── teams.ts
-│   ├── pricing/
-│   │   └── model-pricing.ts
-│   └── utils/
-│       ├── validation.ts          # Zod schemas
-│       └── constants.ts           # Plan limits, feature flags
-│
-├── middleware.ts                   # Next.js middleware: protect /dashboard/*
-│
-├── types/
-│   ├── database.ts                # Generated: pnpm supabase gen types typescript
-│   ├── api.ts
-│   └── providers.ts
-│
-├── supabase/
-│   └── migrations/
-│       ├── 001_initial_schema.sql # W1 core schema from W0 R2/spec.md
-│       ├── 002_seed_model_pricing.sql
-│       ├── 003_team_features.sql  # W4
-│       └── 004_marketplace.sql    # W6
-│
-└── tests/
-    ├── lib/providers/
-    │   ├── csv-parsers.test.ts    # Must test metadata-only extraction from CSV
-    │   └── normalizer.test.ts
-    ├── lib/forecasting/
-    │   └── anomaly-detector.test.ts
-    └── api/
-        ├── agent-sync.test.ts     # Must test Bearer agent key auth + prompt content rejection
-        ├── upload.test.ts         # Must test CSV prompt column rejection
-        └── ingest.test.ts         # Must test prompt content rejection
-```
+- Bare `costroid` opens the fullscreen dashboard in an interactive terminal.
+- In a pipe, CI, or `TERM=dumb`, bare `costroid` prints help and never paints an alternate screen.
+- There is no standalone `tui` subcommand.
+- Plain commands (`sync`, `history`, `trend`, `forecast`, `anomalies`, `savings`, `budget`, `export`, `version`) must stay deterministic and scriptable.
+- `costroid statusline --format plain|tmux|byobu|json` is deterministic one-line stdout, local SQLite only, no provider API/network calls, no credential reads, no sync on redraw.
+- `costroid sync --tui` is opt-in. It may call provider APIs only because the user explicitly invoked `sync`.
+- `sync --tui` animation must reflect real stages only: fetch metadata, write SQLite, refresh analysis, optional push. No fake scanning, no fake AI thinking, no animated money.
+- `--plain`, `NO_COLOR`, non-UTF-8, non-TTY, CI, `TERM=dumb`, and `--no-animation` fall back gracefully as appropriate.
 
-### CLI Sync Agent (separate Go repo: `costroid/costroid`)
+TUI safety invariants:
 
-```
-costroid/
-├── go.mod
-├── go.sum
-├── main.go                        # CLI entry point
-├── cmd/
-│   ├── root.go                    # Root command (cobra); bare `costroid` launches the dashboard (T1.2), prints help in non-TTY
-│   ├── sync.go                    # Sync command (--provider, --days; --push after C11)
-│   ├── history.go                 # View local history (--last 30d)
-│   ├── trend.go                   # Show trends (--weekly, --monthly)
-│   ├── forecast.go                # Predict month-end spend
-│   ├── anomalies.go               # List unusual spending days
-│   ├── savings.go                 # Show savings recommendations
-│   ├── budget.go                  # Set/check budget (--set, --period)
-│   ├── export.go                  # Export (--format csv|json|focus|markdown)
-│   ├── statusline.go              # One-line status output (T1.1)
-│   └── version.go                 # Print version
-│   # (the dashboard is the default `costroid` action, wired in root.go — there is no `tui` subcommand)
-├── providers/
-│   ├── types.go                   # NormalizedCostRecord struct
-│   ├── registry.go                # Provider registry
-│   ├── openai.go                  # GET /v1/organization/usage/completions
-│   ├── anthropic.go               # GET /v1/organizations/usage_report/messages
-│   ├── github_copilot.go          # GET /organizations/ORG/settings/billing/... (Phase 2)
-│   ├── azure_openai.go            # Azure Cost Management API (Phase 2)
-│   ├── aws_bedrock.go             # AWS Cost Explorer API (Phase 2)
-│   └── gcp_billing.go             # GCP Billing export API (Phase 2)
-├── storage/
-│   └── sqlite.go                  # Local SQLite at ~/.costroid/costroid.db
-├── analysis/
-│   ├── forecast.go                # EMA + linear regression
-│   ├── anomaly.go                 # Rolling average anomaly detection
-│   ├── savings.go                 # Model comparison savings calculator
-│   └── budget.go                  # Budget tracking
-├── output/
-│   ├── table.go                   # Terminal table formatting (lipgloss)
-│   ├── json.go                    # JSON output
-│   └── csv.go                     # CSV + FOCUS export
-├── tui/                           # Default fullscreen dashboard (T1.2; Bubble Tea, ADR-011)
-│   ├── app.go                     # Root model: Update/View, keys, resize, Run
-│   ├── data.go                    # Read-only local-SQLite loaders → Dashboard
-│   ├── styles.go                  # lipgloss palette (color/ASCII gated)
-│   ├── view.go                    # Layout: full / compact / too-small / status
-│   ├── keys.go                    # Keyboard map (bubbles/key + help)
-│   ├── render.go                  # Money/age/table render helpers
-│   └── <panel>.go                 # Overview/Providers/Models/Budget/Forecast/Anomalies/History/Trend/Syncs/Export
-├── client/
-│   └── cloud.go                   # Optional POST to costroid.com (created in C11)
-├── .env.example                   # All supported env vars
-├── Makefile                       # build, test, release targets
-├── .goreleaser.yaml               # Release artifacts; cross-platform claims require validation
-├── LICENSE                        # MIT
-├── README.md                      # Setup instructions, demo GIF
-└── .github/
-    └── workflows/
-        ├── ci.yml                 # go test + go vet on every PR
-        └── release.yml            # GoReleaser on tag push
-```
+- Dashboard reads local SQLite only and imports no `providers`, `client`, `net`, `net/http`, or `os/exec`.
+- No raw-terminal overlay, child PTY wrapper, tmux replacement, background daemon, watch process, timer, socket, or model gateway.
+- No provider credentials, raw payloads, prompt-like data, logs, traces, or source code in UI or errors.
+- Ctrl-C/quit must restore the terminal.
 
-**Why Go for the CLI:**
-- **Zero language-runtime dependencies** — single Go binary, no npm/pip/node required; validate OS-level dynamic linking per release artifact
-- **No supply chain risk at runtime** — nothing downloaded when user runs it
-- **API keys stay in the Go binary's process memory** — never exposed to npm dependency tree
-- **Cross-platform goal** — Linux/macOS/Windows release artifacts must be validated before they are claimed, especially because CGO/go-sqlite3 can affect builds
-- **Users can audit the source** — `go build` is reproducible
+T1.6 visual identity is founder-approved:
 
----
+- Dashboard/CLI uses the cold cyan-blue ramp: `#042C53 #185FA5 #378ADD #85B7EB`.
+- `sync --tui` uses the warm coral-amber ramp: `#712B13 #D85A30 #F0997B #F5C4B3`.
+- Signal green `#C8FF3D` is shared for brand/primary money; alert red is reserved for over/critical states.
+- Color is never the only signal; glyph shape, labels, and position must carry meaning in monochrome.
+- Money values never animate, roll, or partially render.
 
-## Agent Workflow Rules
+## Cloud Boundary
 
-### Rule 1: Read Before Writing
-Read in order: (1) This file. (2) `spec.md`. (3) `SKILL.md` if working on marketplace.
-For CLI agent work: read the `costroid/README.md` as well.
+Costroid Cloud is a separate Next.js/Supabase repo. This CLI repo carries only the shared contract and safety rules.
 
-### Rule 2: Work in Priority Order
+Cloud must never:
 
-```
-CURRENT ROADMAP: CLI is provider-complete, R3 is complete, W0 is approved in `W0-cloud-architecture.md`, and W1-W4 plus C11 are complete. Public launch is intentionally deferred until W5, W6, and the approved D1/T1 pre-launch design gates are complete. See PROMPTS.md for full details.
+- call provider APIs from server routes, cron, webhooks, or server components
+- store, encrypt, cache, log, or proxy provider credentials
+- accept prompt/completion/message/content/raw payload fields
+- become observability, tracing, model routing, proxying, or automatic switching
 
-Completed:
-C1: Go project setup
-C2: OpenAI provider
-C3: Anthropic provider
-C4: Savings recommendations
-C5: History, trends, forecasting, anomaly detection
-C6: Budget tracking + multi-format export
-C7: README, GoReleaser, install script, CI/CD
-v0.1.0 release
-R2 / v0.2.0 validation, tag, push, and install smoke
-C9.1: GitHub Copilot provider
-C9.2: Google Gemini CSV billing provider
-C10.1: Azure OpenAI provider
-C10.2: AWS Bedrock provider
-C10.3: GCP Billing provider
-Provider docs extraction
-R3: Cross-platform install experience
-W0: Cloud architecture checkpoint accepted in W0-cloud-architecture.md
-W1: Next.js project scaffolding
-W2: Auth + orgs + agent-sync endpoint + CSV upload
-C11: CLI cloud push to the real W2 ingestion endpoint
-W3: Dashboard + charts + transparency view
-W4: Team features and alerts
+Cloud receives normalized metadata from:
 
-Active sequence:
-W5: Landing page, pricing page, and cloud docs
-W6: Azure Marketplace SaaS integration
-D1/T1: Founder-approved pre-C8 design and terminal experience gates after W6
-C8: Public launch on GitHub/HN/Reddit/Product Hunt when R3/W0, W1-W6/C11, and approved D1/T1 pre-launch gates are complete
-L1: Post-launch feedback triage
+- CLI agent sync
+- CSV upload after forbidden-column rejection
 
-W0 R2 cloud contract:
-- Agent-sync auth uses `Authorization: Bearer csk_...`, not in-body `agent_key`.
-- Agent-sync includes `X-Costroid-Wire-Version: 1` and body `{ "records": [...] }`.
-- `cost_records` deduplicates per org with `(org_id, source_hash)`.
-- Ingest routes find-or-create `connected_providers` by `(org_id, provider_type, sync_method)`.
-- W1 core migrations are only orgs, members, agent keys, connected providers, cost records, audit log, and model pricing. W4 adds team/alert analytics tables; W6 adds marketplace tables.
-- `/api/ingest` SDK endpoint is post-launch backlog, not W2.
+Agent-sync contract:
 
-Post-launch backlog and launch gates:
-M3: Recommendation Intelligence Platform — source-agnostic, metadata-only model alternatives to evaluate.
-Allowed inputs: provider/model/SKU metadata, token counts, usage quantities, cost, timestamps, safe team/project/account IDs, catalog data, pricing sources, benchmark/eval sources, context windows, capability tags, speed/latency, source URLs, source freshness dates, confidence scores, and recommendation evidence.
-Forbidden inputs: prompts, completions, messages, content, request/response bodies, raw provider payloads, traces, logs, source code, repository contents, free-form user text, or free-form labels/system labels.
-It must not become model routing, proxying, automatic switching, or LLM observability.
+- Endpoint: `POST /api/orgs/{orgId}/agent-sync`
+- Auth: `Authorization: Bearer csk_...`; never in-body `agent_key`
+- Header: `X-Costroid-Wire-Version: 1`
+- Body: `{ "records": [...] }`
+- CLI env vars: `COSTROID_ORG_ID`, `COSTROID_AGENT_KEY`, optional `COSTROID_API_URL`
+- Deduplication: `(org_id, source_hash)`
+- Provider row resolution: find-or-create `connected_providers (org_id, provider_type, sync_method)`
 
-T1: Terminal Experience Layer — founder-approved pre-C8 design/statusline gate after W6 for D1/T1.0/T1.1. T1.2 (the fullscreen dashboard) and T1.3 (`sync --tui`) are founder-approved and implemented.
+Allowed `NormalizedCostRecord` fields:
 
-T1.2 Dashboard-as-default — APPROVED & IMPLEMENTED (2026-05-31). The founder explicitly directed that the fullscreen dashboard become the DEFAULT `costroid` action and that the standalone `tui` subcommand be removed. This is a deliberate, founder-approved reversal of the earlier "opt-in, never default" framing for T1.2 only; it supersedes that framing wherever the two conflict.
-- Scope: bare `costroid` (no args) opens the dashboard in an interactive terminal. The `tui` subcommand no longer exists. No other command's output changed; `sync`/`statusline`/`history`/etc. are unchanged.
-- Non-interactive fallback preserved: in a pipe, in CI, or under `TERM=dumb`, bare `costroid` prints help (the prior default) — it never paints an alternate screen into a non-interactive stream. `--plain`/`NO_COLOR`/non-UTF-8 still degrade to ASCII.
-- The dashboard remains metadata-only and read-only over local SQLite: no network, provider API, provider sync, credential access, raw-terminal overlay, child-PTY wrapper, tmux replacement, model gateway, proxy, tracing, or observability. The safety rationale behind the original constraint is fully retained — only the "default vs opt-in" choice changed.
-- The dashboard exposes every local feature, including dedicated History and Trend panels (10 panels total, jump keys `1`–`9` and `0`). No new Go dependency (stays within ADR-011 scope).
+- Required: `provider`, `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd`, `recorded_at`, `source_hash`
+- Optional: `api_key_id`, `project_id`, `product`, `sku`, `unit_type`, `usage_quantity`, `unit_price_usd`, `gross_amount_usd`, `discount_amount_usd`
 
-T1.3 Sync TUI — APPROVED & IMPLEMENTED (2026-05-30). This is the durable, canonical approval/scope/constraints record for T1.3; it lives here in AGENTS.md (the local MarkdownDocs/DECISIONS.md ADR-013 is non-tracked supporting detail only). The founder explicitly approved T1.3 implementation on 2026-05-30, after T1.2 was complete.
-- Scope: opt-in `costroid sync --tui` only. It is never default CLI behavior; plain `costroid sync` output is unchanged (no default sync output changes).
-- The sync TUI may call provider APIs ONLY because the user explicitly invoked `sync`. No provider polling outside that explicit user-invoked sync; no watch process, daemon, timer, socket, or background refresh.
-- No terminal wrapper, no child PTY, no tmux/multiplexer replacement, no raw-terminal overlay.
-- Metadata-only: no prompt/completion/message/content/request-body/response-body/raw-provider-payload/trace/log/source-code/repository-content handling. No provider-credential display. No raw provider payload display.
-- No fake scanning/thinking and no animated money. Progress/animation may only reflect real sync task state. Non-TTY, CI, `TERM=dumb`, and `--no-animation` fall back to the deterministic `sync` output.
-- Dependency scope stays within the previously approved T1.2 dependency decision (ADR-011): `bubbletea v1.3.10` + scoped `bubbles v0.21.0` only; adding `bubbles/spinner` for T1.3 real-stage progress introduced no new module. Any further T1 work or Go dependency requires a new ADR/dependency review.
+Cloud schema facts to preserve:
 
-T1.5 Braille/Dot Interaction Polish — IMPLEMENTED (2026-05-30). A visual/interaction polish pass over the existing opt-in `tui` and `sync --tui` surfaces ONLY, expressing the approved monochrome-first dot/braille identity (braille mark + wordmark header, filled/hollow dot panel selection, braille/block spend meters, a static recent-spend sparkline, dotted separators, real-state sync dot-progress). Constraints: no new Go dependency (stays within ADR-011 scope); no provider/storage/cloud/default-output change; metadata-only; money never animated; one accent color; selection legible with zero color; full ASCII/`NO_COLOR`/`--plain`/non-TTY fallback preserved. It is still opt-in and never default CLI behavior.
+- Core: orgs, members, agent keys, connected providers, cost records, audit log, model pricing.
+- Team/alerts: budgets, alerts, notification channels, forecasts, anomalies.
+- Marketplace: marketplace subscriptions, webhook events.
+- Service role writes cost records/analytics/audit/marketplace state; users read through org-scoped RLS.
+- Agent keys are `csk_<32 url-safe base64 chars>`, hash-only lookup, plaintext shown once.
 
-T1.1 first implementation is statusline MVP: `costroid statusline --format plain|tmux|byobu|json`, local SQLite only, deterministic one-line stdout, no provider API/network calls, no provider sync on redraw, no new Go dependency.
-T1 must not become a raw-terminal overlay, tmux replacement, child-PTY wrapper, model gateway, proxy, tracing, or LLM observability. (The original "must not become default CLI behavior" clause was intentionally lifted for the dashboard by the founder on 2026-05-31 — see "T1.2 Dashboard-as-default" above; the non-default constraints in this sentence still hold, and `sync --tui` remains opt-in.) Bubble Tea/Bubbles are limited to the approved, implemented T1.2 (the dashboard) and T1.3 (`sync --tui`) work; any further Go dependency requires a new ADR/dependency review.
-```
+## Pricing And Public Claims
 
-### Rule 3: One Feature Per Session
-Each session = ONE priority item. At session end:
-- **Go CLI:** Zero `go vet` warnings. `go test ./...` passes. `gofmt` applied. Git commit.
-- **TypeScript cloud:** Zero TS errors. `pnpm build` passes. New functions have tests. Git commit.
+- CLI Free forever: every local feature, every provider, no account, no artificial limits.
+- Cloud Free: $0/month, 1 user, 1-year cloud history, dashboard, transparency view, CSV upload, CLI `--push`.
+- Cloud Team: $19/month, monthly only, multi-user workspace, team attribution, budgets, alerts, Slack/Teams/email notifications, audit log, SSO/Azure Marketplace when verified, long-term/full historical retention subject to fair use.
+- Enterprise/contact-us is future procurement only, not a public launch pricing card.
+- No public Business tier, founder discount, early-access price, annual pricing, yearly plan, or annual discount.
+- Do not claim cloud dashboard, `--push`, alerts, team sync, audit log, marketplace checkout, SSO, demo assets, or OS-specific installers until implemented and verified.
+- Verify time-sensitive claims, provider pricing, marketplace status, compliance claims, customer counts, and social proof before publishing.
 
-### Rule 4: File Size Limits
-- 300 lines max per file. Split if exceeded.
+Recommended category language:
+
+- "open-source AI billing visibility"
+- "local-first AI/LLM spend tracking"
+- "metadata-only AI cost CLI"
+- "actual provider billing, not traces or estimates"
+
+Avoid: "LLM observability", "gateway", "proxy", "cloud cost optimizer", "autonomous remediation", "enterprise FinOps replacement", or guaranteed model equivalence/savings.
+
+M3 recommendation intelligence is post-launch unless explicitly reprioritized. It may suggest "models to evaluate" using metadata, pricing, catalogs, benchmarks, source URLs, freshness dates, confidence scores, and evidence. It must not use prompts, completions, traces, logs, source code, raw payloads, request/response bodies, or free-form user text.
+
+## Azure Marketplace Guardrails
+
+- Build marketplace work only after W5 landing/pricing/docs and explicit W6 scope.
+- Azure first; AWS Marketplace is later backlog.
+- Public marketplace plans: Free and Team only.
+- Landing page must be a real UI page with Entra ID SSO before activation; no auto-activation API redirect.
+- Supabase Azure OAuth redirect URI is the Supabase callback URL, not the app URL.
+- Supabase Azure provider uses `common`; configure `xms_edov` optional claim.
+- SaaS Fulfillment API scope is fixed: `20e940b3-4c77-4b0b-9a53-9e16a1b010a7/.default`.
+- Resolve uses `POST` with `x-ms-marketplace-token`; Activate must be called to start billing.
+- Webhook auth validates Azure JWTs with `jose`.
+- Webhooks are idempotent and return `200` even on internal handling errors.
+- Acknowledge only `ChangePlan`, `ChangeQuantity`, and `Reinstate`.
+- `Suspend`, `Unsubscribe`, and `Renew` are notify-only; do not call `updateOperationStatus`.
+- On unsubscribe, set a 7-day post-cancellation deletion window.
+
+## Quality Gates
+
+Limits:
+
+- 300 lines max per file.
 - 50 lines max per function.
-- 150 lines max per React component.
+- 150 lines max per React component in the cloud repo.
+- Prefer existing patterns and narrow edits over new abstractions.
 
-### Rule 5: Error Handling
+Go verification for code changes:
 
-**TypeScript (cloud):**
-- API routes: proper HTTP status + Zod error messages.
-- External calls: try/catch, update `connected_providers.status = 'error'`.
-- NEVER expose internals to frontend.
-
-**Go (CLI):**
-- Keep `cmd/*.go` thin — parse flags, call logic, format output. NO business logic in cmd/.
-- Business logic belongs in `analysis/` (forecasting, anomaly, savings, budget).
-- Provider API calls belong in `providers/`. Database operations in `storage/`.
-- Always check and return errors: `if err != nil { return fmt.Errorf("fetch openai: %w", err) }`
-- Use `errors.Is` / `errors.As` for known error types.
-- Define domain errors: `var ErrProviderUnavailable = errors.New("provider unavailable")`
-- NEVER expose raw API/database errors to the user — translate to friendly messages.
-- Use `context.WithTimeout` for all HTTP calls to provider APIs.
-
-### Rule 6: Testing the Metadata-Only Rule
-Every ingestion function MUST have a test that passes mock data WITH prompt content and asserts ONLY metadata survives.
-
-### Rule 7: Git
-- Branches: `feat/C2-openai-provider`, `fix/anomaly-threshold`, `feat/W3-dashboard-charts`
-- Commits: `feat:`, `fix:`, `chore:`, `docs:`
-- NEVER commit: `.env.local`, `node_modules/`, credentials
-
-### Rule 8: Agent Coordination
-
-**Cloud dashboard repo (costroid-cloud):**
-
-| Agent | Owns | Does NOT Touch |
-|-------|------|----------------|
-| Backend | `app/api/`, `lib/`, `supabase/`, `tests/` | `components/`, dashboard pages |
-| Frontend | `app/dashboard/`, `app/(auth)/`, `components/` | `lib/marketplace/`, `app/api/` |
-| Integration | `lib/marketplace/`, `lib/notifications/`, `app/api/webhooks/`, `app/marketplace/` | Dashboard UI, auth |
-
-**Go CLI repo (costroid):** Single developer — no agent coordination needed. All code in one repo.
-
-Backend wins on conflicts.
-
-### Rule 9: Supabase Type Safety
-After ANY schema change:
 ```bash
-pnpm supabase gen types typescript --local > types/database.ts
+gofmt -w .
+go build ./...
+go test ./...
+go vet ./...
 ```
-All Supabase queries use the generated `Database` type.
 
----
+Use `go test -race ./...` for TUI, concurrency, sync orchestration, storage, release-sensitive changes, or launch readiness. `make check` runs fmt, vet, test, and race.
 
-## Key Design Decisions — Do Not Override
+Cloud verification for code changes:
 
-These are FINAL. If you think a decision is wrong, do NOT change it — ask the founder.
+```bash
+pnpm build
+pnpm test
+pnpm audit
+```
 
-1. **Supabase** over self-hosted Postgres — zero DB ops for solo developer.
-2. **Next.js API routes** over separate backend — single deployable unit.
-3. **TanStack Query v5** — NOT SWR, NOT useEffect+useState.
-4. **pnpm** over npm/yarn — content-addressable storage, strict mode.
-5. **shadcn/ui** over MUI / Chakra — copy-paste components, no dependency lock-in.
-6. **Recharts** over Chart.js / D3 — React-native, works with Server Components.
-7. **Zod** for all validation — TypeScript type inference from schemas.
-8. **Server Components by default.** `'use client'` only when needed.
-9. **Vercel Cron** for background jobs — analytics only, never provider API calls.
-10. **Zero credential storage** — provider API keys never touch our server. WHY: "We encrypt your keys" still requires trust. "We never see your keys — read our code" requires zero trust. This eliminates the #1 conversion barrier and is our strongest competitive differentiator.
+Documentation/update rules:
 
-### The Open-Core Principle
+- New env var: update `.env.example`.
+- New user-visible feature: update README or user docs.
+- New provider: update `docs/providers/` and add metadata-only tests.
+- Schema change in cloud: add migration and regenerate Supabase types.
+- New endpoint/wire change: update docs and tests.
+- Pricing/tier change: update code constants, public copy, marketplace mapping, and this file.
 
-**If it runs on the user's machine and costs us nothing to operate, it's FREE.** Every feature that CAN run locally DOES run locally — forecasting, anomaly detection, savings, budget, export. We only charge for features that require a server (cloud storage, multi-user, notifications). The CLI is the REAL product, not a teaser.
+Git:
+
+- Branch examples: `feat/C2-openai-provider`, `fix/anomaly-threshold`, `feat/W3-dashboard-charts`.
+- Commit prefixes: `feat:`, `fix:`, `chore:`, `docs:`.
+- Never commit `.env`, `.env.local`, `node_modules`, credentials, private keys, raw provider payloads, or real customer data.
