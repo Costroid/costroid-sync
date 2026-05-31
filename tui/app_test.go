@@ -50,9 +50,13 @@ func TestUpdate_PanelNavigation(t *testing.T) {
 		t.Errorf("after Shift-Tab active=%d, want %d", got, len(m.panels)-1)
 	}
 
-	// out-of-range jump key is ignored (only 1-8 are panels)
-	if nm, _ := m.Update(runeKey("9")); nm.(model).active != 0 {
-		t.Errorf("'9' should not change active panel")
+	// '0' jumps to the tenth panel (index 9).
+	if nm, _ := m.Update(runeKey("0")); nm.(model).active != 9 {
+		t.Errorf("'0' should jump to the last panel (index 9)")
+	}
+	// a non-jump key leaves the active panel unchanged.
+	if nm, _ := m.Update(runeKey("z")); nm.(model).active != 0 {
+		t.Errorf("'z' should not change active panel")
 	}
 }
 
@@ -100,10 +104,21 @@ func TestInteractiveAllowed(t *testing.T) {
 }
 
 func TestJumpIndex(t *testing.T) {
+	// With 8 panels, '9' and '0' map past the end and are rejected.
 	cases := map[string]int{"1": 0, "8": 7, "9": -1, "0": -1, "": -1, "12": -1, "a": -1}
 	for in, want := range cases {
 		if got := jumpIndex(in, 8); got != want {
-			t.Errorf("jumpIndex(%q)=%d, want %d", in, got, want)
+			t.Errorf("jumpIndex(%q, 8)=%d, want %d", in, got, want)
+		}
+	}
+}
+
+func TestJumpIndex_TenPanels(t *testing.T) {
+	// With 10 panels, '1'..'9' select 0..8 and '0' selects the tenth (index 9).
+	cases := map[string]int{"1": 0, "8": 7, "9": 8, "0": 9, "": -1, "10": -1, "a": -1}
+	for in, want := range cases {
+		if got := jumpIndex(in, 10); got != want {
+			t.Errorf("jumpIndex(%q, 10)=%d, want %d", in, got, want)
 		}
 	}
 }
@@ -149,6 +164,18 @@ func demoDashboard(now time.Time) Dashboard {
 		Syncs: []analysis.ProviderActivity{
 			{Provider: "openai", LatestActive: now.Add(-2 * time.Hour)},
 			{Provider: "anthropic", LatestActive: now.Add(-26 * time.Hour)},
+		},
+		History: []analysis.DailyTotal{
+			{Date: time.Date(2026, 5, 27, 0, 0, 0, 0, time.UTC), CostUSD: 10, TotalTokens: 400},
+			{Date: time.Date(2026, 5, 28, 0, 0, 0, 0, time.UTC), CostUSD: 12, TotalTokens: 500},
+			{Date: time.Date(2026, 5, 29, 0, 0, 0, 0, time.UTC), CostUSD: 16, TotalTokens: 600},
+		},
+		TrendsWeekly: []analysis.TrendPeriod{
+			{Period: "2026-W21", CostUSD: 22, TotalTokens: 900},
+			{Period: "2026-W22", CostUSD: 16, TotalTokens: 600, ChangePercent: -27.3, HasChange: true},
+		},
+		TrendsMonthly: []analysis.TrendPeriod{
+			{Period: "2026-05", CostUSD: 38, TotalTokens: 1500},
 		},
 		// Deterministic, metadata-only daily-spend series for the sparkline.
 		Spark: []float64{1, 1, 2, 2, 3, 4, 4, 5, 6, 7, 6, 8, 9, 10},

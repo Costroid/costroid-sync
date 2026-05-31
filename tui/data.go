@@ -41,15 +41,18 @@ type Dashboard struct {
 	DBPath      string
 	WindowDays  int
 
-	Overview  analysis.Statusline
-	Forecast  *analysis.ForecastResult // nil when data is insufficient
-	Budget    *analysis.BudgetStatus   // nil when no budget is configured
-	Anomalies []analysis.Anomaly
-	Providers []analysis.ProviderTotal
-	Models    []analysis.ModelTotal
-	Savings   []analysis.SavingsRecommendation
-	Syncs     []analysis.ProviderActivity
-	LastSync  *time.Time
+	Overview      analysis.Statusline
+	Forecast      *analysis.ForecastResult // nil when data is insufficient
+	Budget        *analysis.BudgetStatus   // nil when no budget is configured
+	Anomalies     []analysis.Anomaly
+	Providers     []analysis.ProviderTotal
+	Models        []analysis.ModelTotal
+	Savings       []analysis.SavingsRecommendation
+	Syncs         []analysis.ProviderActivity
+	History       []analysis.DailyTotal  // daily spend rollups over the read window
+	TrendsWeekly  []analysis.TrendPeriod // ISO-week rollups over the read window
+	TrendsMonthly []analysis.TrendPeriod // calendar-month rollups over the read window
+	LastSync      *time.Time
 
 	// Spark is a metadata-only trailing daily-spend series (one total per UTC
 	// day, oldest→newest) used only to draw the static dashboard sparkline.
@@ -99,6 +102,9 @@ func LoadDashboard(ctx context.Context, now time.Time) Dashboard {
 	d.Models = analysis.AggregateByModel(records)
 	d.Savings = analysis.Recommend(records)
 	d.Syncs = analysis.LatestActivityByProvider(records)
+	d.History = analysis.DailyTotals(records)
+	d.TrendsWeekly = analysis.Trends(records, analysis.TrendWeekly)
+	d.TrendsMonthly = analysis.Trends(records, analysis.TrendMonthly)
 	d.LastSync = loadLastSync(ctx, db)
 	// Build the sparkline series by field access only — see spendPoint (no import).
 	var pts []spendPoint

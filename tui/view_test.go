@@ -52,12 +52,45 @@ func TestProvidersBody_Content(t *testing.T) {
 	}
 }
 
+func TestHistoryBody_Content(t *testing.T) {
+	s := newStyles(false, true)
+	got := stripANSI(historyBody(demoDashboard(refTime()), s, 80))
+	// Newest day first, with date + money + token columns and an ASCII spend meter.
+	for _, sub := range []string{
+		"Date", "Cost", "Tokens", "Spend",
+		"2026-05-29", "$16.00", "2026-05-27", "$10.00", "[", "#",
+	} {
+		if !strings.Contains(got, sub) {
+			t.Errorf("history body missing %q in:\n%s", sub, got)
+		}
+	}
+	// The newest day must render before the oldest.
+	if strings.Index(got, "2026-05-29") > strings.Index(got, "2026-05-27") {
+		t.Errorf("history body should list newest day first:\n%s", got)
+	}
+}
+
+func TestTrendBody_Content(t *testing.T) {
+	s := newStyles(false, true)
+	got := stripANSI(trendBody(demoDashboard(refTime()), s, 80))
+	// Both interval sections, the change column, a signed change, and "n/a" for the
+	// first period (no prior to compare against).
+	for _, sub := range []string{
+		"Weekly", "Monthly", "Period", "Change",
+		"2026-W21", "2026-W22", "n/a", "-27.3%", "2026-05",
+	} {
+		if !strings.Contains(got, sub) {
+			t.Errorf("trend body missing %q in:\n%s", sub, got)
+		}
+	}
+}
+
 func TestView_FullLayout(t *testing.T) {
 	m := sizedModel(t, demoDashboard(refTime()), 100, 40)
 	out := stripANSI(m.View())
 	// wordmark + period summary in the header, "Overview" panel title, "$38.00"
 	// MTD, and the lowercase dot-tab nav names (numbers moved to the help footer).
-	for _, sub := range []string{wordmark, "Overview", "$38.00", "overview", "export"} {
+	for _, sub := range []string{wordmark, "Overview", "$38.00", "ovw", "export"} {
 		if !strings.Contains(out, sub) {
 			t.Errorf("full view missing %q", sub)
 		}
