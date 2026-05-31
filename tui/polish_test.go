@@ -49,10 +49,10 @@ func TestHeader_BrailleInNormalMode(t *testing.T) {
 func TestNav_SelectedStateVisibleWithoutColor(t *testing.T) {
 	m := sizedModel(t, demoDashboard(refTime()), 100, 40) // color off, ascii on
 	nav := stripANSI(m.tabsLine())
-	if !strings.HasPrefix(nav, asciiNavActive+"overview") {
+	if !strings.HasPrefix(nav, asciiNavActive+"ovw") {
 		t.Errorf("active panel not marked with filled dot: %q", nav)
 	}
-	if !strings.Contains(nav, asciiNavInactive+"providers") {
+	if !strings.Contains(nav, asciiNavInactive+"prov") {
 		t.Errorf("inactive panel not marked with hollow dot: %q", nav)
 	}
 	nm, _ := m.Update(runeKey("3")) // jump to Models (index 2)
@@ -60,7 +60,7 @@ func TestNav_SelectedStateVisibleWithoutColor(t *testing.T) {
 	if !strings.Contains(nav2, asciiNavActive+"models") {
 		t.Errorf("active marker did not move to models: %q", nav2)
 	}
-	if strings.Contains(nav2, asciiNavActive+"overview") {
+	if strings.Contains(nav2, asciiNavActive+"ovw") {
 		t.Errorf("overview must no longer be active: %q", nav2)
 	}
 }

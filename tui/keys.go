@@ -32,7 +32,7 @@ func newKeyMap(ascii bool) keyMap {
 		Right:  key.NewBinding(key.WithKeys("right", "l", "tab"), key.WithHelp(right, "next panel")),
 		Top:    key.NewBinding(key.WithKeys("g", "home"), key.WithHelp("g", "top")),
 		Bottom: key.NewBinding(key.WithKeys("G", "end"), key.WithHelp("G", "bottom")),
-		Jump:   key.NewBinding(key.WithKeys("1", "2", "3", "4", "5", "6", "7", "8"), key.WithHelp("1-8", "jump to panel")),
+		Jump:   key.NewBinding(key.WithKeys("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), key.WithHelp("1-9,0", "jump to panel")),
 		Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		Quit:   key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 	}

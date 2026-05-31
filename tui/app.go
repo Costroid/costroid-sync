@@ -42,16 +42,21 @@ type panelDef struct {
 	body  func(Dashboard, Styles, int) string
 }
 
+// panelRegistry lists the navigable panels in tab order. tab labels are kept
+// short (abbreviated) so all ten fit one 80-column tab row; title is the full
+// heading shown above the body. The tenth panel's jump key is "0" (1-9 then 0).
 func panelRegistry() []panelDef {
 	return []panelDef{
-		{"1", "Overview", "Overview", overviewBody},
-		{"2", "Providers", "Providers", providersBody},
-		{"3", "Models", "Models", modelsBody},
-		{"4", "Budget", "Budget", budgetBody},
-		{"5", "Forecast", "Forecast", forecastBody},
-		{"6", "Anomalies", "Anomalies", anomaliesBody},
-		{"7", "Syncs", "Recent Syncs", syncsBody},
-		{"8", "Export", "Export hints", exportHintsBody},
+		{"1", "ovw", "Overview", overviewBody},
+		{"2", "prov", "Providers", providersBody},
+		{"3", "models", "Models", modelsBody},
+		{"4", "budget", "Budget", budgetBody},
+		{"5", "fcast", "Forecast", forecastBody},
+		{"6", "anom", "Anomalies", anomaliesBody},
+		{"7", "hist", "History", historyBody},
+		{"8", "trend", "Trend", trendBody},
+		{"9", "syncs", "Recent Syncs", syncsBody},
+		{"0", "export", "Export hints", exportHintsBody},
 	}
 }
 
@@ -169,11 +174,18 @@ func (m model) activeBody() string {
 	return m.styles.Title.Render(p.title) + "\n\n" + p.body(m.data, m.styles, m.width)
 }
 
+// jumpIndex maps a single-digit key to a panel index: '1'..'9' select panels
+// 0..8 and '0' selects the tenth panel (index 9). It returns -1 for any other
+// key or an index beyond the current panel count.
 func jumpIndex(s string, n int) int {
-	if len(s) != 1 || s[0] < '1' || s[0] > '8' {
+	if len(s) != 1 || s[0] < '0' || s[0] > '9' {
 		return -1
 	}
-	if i := int(s[0] - '1'); i < n {
+	i := int(s[0] - '1')
+	if s[0] == '0' {
+		i = 9
+	}
+	if i >= 0 && i < n {
 		return i
 	}
 	return -1

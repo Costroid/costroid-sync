@@ -15,6 +15,31 @@ type dailyTotal struct {
 	TotalTokens int
 }
 
+// DailyTotal is a metadata-only daily spend rollup over a UTC calendar day.
+// METADATA-ONLY — a date plus aggregate cost and token counts only. It never
+// carries prompts, completions, messages, raw payloads, or any other content.
+type DailyTotal struct {
+	Date        time.Time
+	CostUSD     float64
+	TotalTokens int
+}
+
+// DailyTotals returns one DailyTotal per UTC calendar day from the first to the
+// last day with recorded usage, oldest→newest, with gap days zero-filled. It
+// reuses the internal daily series so callers (such as the dashboard's History
+// panel) get a deterministic, metadata-only view without touching raw records.
+func DailyTotals(records []providers.NormalizedCostRecord) []DailyTotal {
+	series := completeDailySeries(records)
+	if len(series) == 0 {
+		return nil
+	}
+	out := make([]DailyTotal, len(series))
+	for i, d := range series {
+		out[i] = DailyTotal{Date: d.Date, CostUSD: d.CostUSD, TotalTokens: d.TotalTokens}
+	}
+	return out
+}
+
 func costsByDate(records []providers.NormalizedCostRecord) map[time.Time]dailyTotal {
 	out := map[time.Time]dailyTotal{}
 	for _, r := range records {

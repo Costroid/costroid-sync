@@ -92,6 +92,13 @@ costroid savings
 costroid forecast
 ```
 
+Or just run `costroid` with no arguments to open the interactive dashboard over the same
+local data:
+
+```sh
+costroid
+```
+
 ## Commands
 
 | Command | Purpose | Example |
@@ -105,8 +112,9 @@ costroid forecast
 | `budget` | Set or check a local spending budget. | `costroid budget --set 500 --period monthly` |
 | `export` | Export local metadata records to stdout. | `costroid export --format csv > costs.csv` |
 | `statusline` | Print a one-line local cost summary for tmux/Byobu/shell status bars. | `costroid statusline --format tmux` |
-| `tui` | Open an interactive fullscreen dashboard of local cost metadata. | `costroid tui` |
 | `version` | Print the CLI version. | `costroid version` |
+
+Running `costroid` with **no arguments** opens the interactive fullscreen dashboard (see [TUI](#tui)). In a pipe, in CI, or under `TERM=dumb` it prints help instead.
 
 Supported `sync --provider` values: `openai`, `anthropic`, `github-copilot` (alias `copilot`), `google-gemini` (alias `gemini`), `gcp-billing` (alias `gcp`), `azure-openai`, `aws-bedrock` (alias `bedrock`), `all`. Defaults to `openai`. With `--provider all`, only providers with their environment variables set are queried; others are skipped with a note.
 
@@ -167,13 +175,13 @@ costroid statusline --format byobu
 
 ## TUI
 
-`costroid tui` opens an opt-in, keyboard-first fullscreen dashboard (alternate screen) of
-your local cost metadata, with panels for Overview, Providers, Models, Budget, Forecast,
-Anomalies, Recent Syncs, and Export hints:
+Running `costroid` with no arguments opens a keyboard-first fullscreen dashboard (alternate
+screen) of your local cost metadata, with panels for Overview, Providers, Models, Budget,
+Forecast, Anomalies, History, Trend, Recent Syncs, and Export hints:
 
 ```text
 ⣿ ⠉⠕⠎⠞⠗⠕⠊⠙ costroid · MTD $38.00 · forecast $99.39 · last 45d
-●overview ·providers ·models ·budget ·forecast ·anomalies ·syncs ·export
+●ovw ·prov ·models ·budget ·fcast ·anom ·hist ·trend ·syncs ·export
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
 Overview
   Month to date   $38.00   ▁▂▃▄▅▆▇
@@ -182,6 +190,10 @@ Overview
   Anomalies       1  ALERT  █
   Last sync       4h ago
 ```
+
+Every local feature is reachable from the dashboard: the **History** panel shows recent daily
+spend, **Trend** shows weekly and monthly rollups, and Forecast, Budget, Anomalies, savings
+(under Export hints), and per-provider/model totals each get a panel.
 
 The dashboard uses a monochrome-first dot/braille identity: the selected panel is marked by a
 filled dot (`●`) rather than color alone, spend shares and budgets render as braille/block meters,
@@ -194,14 +206,14 @@ request, provider API call, or provider sync — run `costroid sync` separately.
 other command's output.
 
 ```sh
-costroid tui                  # open the dashboard
-costroid tui --plain          # ASCII-only glyphs, no color
+costroid                      # open the dashboard
+costroid --plain              # ASCII-only glyphs, no color
 ```
 
-Navigation: `Tab`/`Shift-Tab` or `1`–`8` switch panels, `j`/`k` (or arrows) scroll, `g`/`G` jump to
-top/bottom, `?` toggles help, and `q` (or `Ctrl-C`) quits — the terminal is always restored on
-exit. `NO_COLOR` and `--plain` suppress color. In a pipe or non-interactive terminal (or
-`TERM=dumb`) it refuses cleanly instead of painting an alternate screen into a pipe; use
+Navigation: `Tab`/`Shift-Tab` or `1`–`9` and `0` switch panels, `j`/`k` (or arrows) scroll, `g`/`G`
+jump to top/bottom, `?` toggles help, and `q` (or `Ctrl-C`) quits — the terminal is always restored
+on exit. `NO_COLOR` and `--plain` suppress color. In a pipe or non-interactive terminal (or
+`TERM=dumb`) `costroid` prints help instead of painting an alternate screen into a pipe; use
 `statusline` or `history` for scriptable output.
 
 ## Local Storage

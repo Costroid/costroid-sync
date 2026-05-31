@@ -120,7 +120,7 @@ func processOpenAIUsage(raw map[string]interface{}) NormalizedCostRecord {
 | `github.com/spf13/cobra` | CLI framework (commands, flags, help) |
 | `github.com/mattn/go-sqlite3` | Local SQLite storage (~/.costroid/costroid.db) |
 | `github.com/charmbracelet/lipgloss` | Terminal table styling and colors |
-| `github.com/charmbracelet/bubbletea` | Opt-in TUI event loop — fullscreen `tui` (T1.2) and `sync --tui` (T1.3); pinned `v1.3.10`, approved in `DECISIONS.md` ADR-011 |
+| `github.com/charmbracelet/bubbletea` | TUI event loop — the default fullscreen dashboard (T1.2, bare `costroid`) and `sync --tui` (T1.3); pinned `v1.3.10`, approved in `DECISIONS.md` ADR-011 |
 | `github.com/charmbracelet/bubbles` | Scoped TUI components — read-only `table`/`viewport`/`help`/`key`/`paginator` (T1.2) plus `spinner` for real sync stages (T1.3); pinned `v0.21.0`, ADR-011/ADR-013 |
 | `github.com/mattn/go-isatty` | TTY detection for the TUI's non-interactive refusal (already in the module graph) |
 | Standard library only for: | `net/http` (API calls), `encoding/json`, `fmt`, `os`, `context`, `crypto/sha256` |
@@ -275,7 +275,7 @@ costroid/
 ├── go.sum
 ├── main.go                        # CLI entry point
 ├── cmd/
-│   ├── root.go                    # Root command (cobra)
+│   ├── root.go                    # Root command (cobra); bare `costroid` launches the dashboard (T1.2), prints help in non-TTY
 │   ├── sync.go                    # Sync command (--provider, --days; --push after C11)
 │   ├── history.go                 # View local history (--last 30d)
 │   ├── trend.go                   # Show trends (--weekly, --monthly)
@@ -285,8 +285,8 @@ costroid/
 │   ├── budget.go                  # Set/check budget (--set, --period)
 │   ├── export.go                  # Export (--format csv|json|focus|markdown)
 │   ├── statusline.go              # One-line status output (T1.1)
-│   ├── tui.go                     # Opt-in fullscreen dashboard command (T1.2)
 │   └── version.go                 # Print version
+│   # (the dashboard is the default `costroid` action, wired in root.go — there is no `tui` subcommand)
 ├── providers/
 │   ├── types.go                   # NormalizedCostRecord struct
 │   ├── registry.go                # Provider registry
@@ -307,14 +307,14 @@ costroid/
 │   ├── table.go                   # Terminal table formatting (lipgloss)
 │   ├── json.go                    # JSON output
 │   └── csv.go                     # CSV + FOCUS export
-├── tui/                           # Opt-in fullscreen TUI (T1.2; Bubble Tea, ADR-011)
+├── tui/                           # Default fullscreen dashboard (T1.2; Bubble Tea, ADR-011)
 │   ├── app.go                     # Root model: Update/View, keys, resize, Run
 │   ├── data.go                    # Read-only local-SQLite loaders → Dashboard
 │   ├── styles.go                  # lipgloss palette (color/ASCII gated)
 │   ├── view.go                    # Layout: full / compact / too-small / status
 │   ├── keys.go                    # Keyboard map (bubbles/key + help)
 │   ├── render.go                  # Money/age/table render helpers
-│   └── <panel>.go                 # Overview/Providers/Models/Budget/Forecast/Anomalies/Syncs/Export
+│   └── <panel>.go                 # Overview/Providers/Models/Budget/Forecast/Anomalies/History/Trend/Syncs/Export
 ├── client/
 │   └── cloud.go                   # Optional POST to costroid.com (created in C11)
 ├── .env.example                   # All supported env vars
@@ -393,7 +393,13 @@ Allowed inputs: provider/model/SKU metadata, token counts, usage quantities, cos
 Forbidden inputs: prompts, completions, messages, content, request/response bodies, raw provider payloads, traces, logs, source code, repository contents, free-form user text, or free-form labels/system labels.
 It must not become model routing, proxying, automatic switching, or LLM observability.
 
-T1: Terminal Experience Layer — founder-approved pre-C8 design/statusline gate after W6 for D1/T1.0/T1.1. T1.2 (`tui`) and T1.3 (`sync --tui`) are founder-approved and implemented.
+T1: Terminal Experience Layer — founder-approved pre-C8 design/statusline gate after W6 for D1/T1.0/T1.1. T1.2 (the fullscreen dashboard) and T1.3 (`sync --tui`) are founder-approved and implemented.
+
+T1.2 Dashboard-as-default — APPROVED & IMPLEMENTED (2026-05-31). The founder explicitly directed that the fullscreen dashboard become the DEFAULT `costroid` action and that the standalone `tui` subcommand be removed. This is a deliberate, founder-approved reversal of the earlier "opt-in, never default" framing for T1.2 only; it supersedes that framing wherever the two conflict.
+- Scope: bare `costroid` (no args) opens the dashboard in an interactive terminal. The `tui` subcommand no longer exists. No other command's output changed; `sync`/`statusline`/`history`/etc. are unchanged.
+- Non-interactive fallback preserved: in a pipe, in CI, or under `TERM=dumb`, bare `costroid` prints help (the prior default) — it never paints an alternate screen into a non-interactive stream. `--plain`/`NO_COLOR`/non-UTF-8 still degrade to ASCII.
+- The dashboard remains metadata-only and read-only over local SQLite: no network, provider API, provider sync, credential access, raw-terminal overlay, child-PTY wrapper, tmux replacement, model gateway, proxy, tracing, or observability. The safety rationale behind the original constraint is fully retained — only the "default vs opt-in" choice changed.
+- The dashboard exposes every local feature, including dedicated History and Trend panels (10 panels total, jump keys `1`–`9` and `0`). No new Go dependency (stays within ADR-011 scope).
 
 T1.3 Sync TUI — APPROVED & IMPLEMENTED (2026-05-30). This is the durable, canonical approval/scope/constraints record for T1.3; it lives here in AGENTS.md (the local MarkdownDocs/DECISIONS.md ADR-013 is non-tracked supporting detail only). The founder explicitly approved T1.3 implementation on 2026-05-30, after T1.2 was complete.
 - Scope: opt-in `costroid sync --tui` only. It is never default CLI behavior; plain `costroid sync` output is unchanged (no default sync output changes).
@@ -406,7 +412,7 @@ T1.3 Sync TUI — APPROVED & IMPLEMENTED (2026-05-30). This is the durable, cano
 T1.5 Braille/Dot Interaction Polish — IMPLEMENTED (2026-05-30). A visual/interaction polish pass over the existing opt-in `tui` and `sync --tui` surfaces ONLY, expressing the approved monochrome-first dot/braille identity (braille mark + wordmark header, filled/hollow dot panel selection, braille/block spend meters, a static recent-spend sparkline, dotted separators, real-state sync dot-progress). Constraints: no new Go dependency (stays within ADR-011 scope); no provider/storage/cloud/default-output change; metadata-only; money never animated; one accent color; selection legible with zero color; full ASCII/`NO_COLOR`/`--plain`/non-TTY fallback preserved. It is still opt-in and never default CLI behavior.
 
 T1.1 first implementation is statusline MVP: `costroid statusline --format plain|tmux|byobu|json`, local SQLite only, deterministic one-line stdout, no provider API/network calls, no provider sync on redraw, no new Go dependency.
-T1 must not become default CLI behavior, raw-terminal overlay, tmux replacement, child-PTY wrapper, model gateway, proxy, tracing, or LLM observability. Bubble Tea/Bubbles are limited to the approved, implemented T1.2 (`tui`) and T1.3 (`sync --tui`) work; any further Go dependency requires a new ADR/dependency review.
+T1 must not become a raw-terminal overlay, tmux replacement, child-PTY wrapper, model gateway, proxy, tracing, or LLM observability. (The original "must not become default CLI behavior" clause was intentionally lifted for the dashboard by the founder on 2026-05-31 — see "T1.2 Dashboard-as-default" above; the non-default constraints in this sentence still hold, and `sync --tui` remains opt-in.) Bubble Tea/Bubbles are limited to the approved, implemented T1.2 (the dashboard) and T1.3 (`sync --tui`) work; any further Go dependency requires a new ADR/dependency review.
 ```
 
 ### Rule 3: One Feature Per Session

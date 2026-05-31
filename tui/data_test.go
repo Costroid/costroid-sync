@@ -100,6 +100,17 @@ func TestLoadDashboard_Populated(t *testing.T) {
 	if len(d.Syncs) != 2 {
 		t.Errorf("syncs = %d, want 2 providers", len(d.Syncs))
 	}
+	// History panel: one daily total per day across the three spend days.
+	if len(d.History) != 3 {
+		t.Errorf("history = %d daily totals, want 3", len(d.History))
+	}
+	// Trend panel: the three days span one ISO week and one calendar month.
+	if len(d.TrendsWeekly) == 0 {
+		t.Error("TrendsWeekly is empty, want at least one period")
+	}
+	if len(d.TrendsMonthly) == 0 {
+		t.Error("TrendsMonthly is empty, want at least one period")
+	}
 }
 
 func TestLoadDashboard_NeverSynced(t *testing.T) {
